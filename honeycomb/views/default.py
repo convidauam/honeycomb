@@ -5,6 +5,10 @@ from pyramid_storage import extensions
 
 from ..models import *
 
+import math
+from pyramid.view import view_config
+import uuid
+
 
 @view_config(context=BeeHive, renderer='templates/beehive.jinja2')
 def beehive_view(context, request):
@@ -21,19 +25,68 @@ def beehive_view(context, request):
         'request': request,      
     }
 
+@view_config(context=Honeycomb, name='api', renderer='json')
+def honeycomb_api(request):
+    """Devuelve un grafo con nodos y aristas de un Honeycomb."""
+    honeycomb = request.context
+    honeycomb_title = getattr(honeycomb, 'title', "Wild honeycomb")
 
-@view_config(context=Honeycomb, renderer='honeycomb:templates/honeycomb.jinja2')
-def honeycomb(request):
-    if hasattr(request.context, 'title'):
-        honeycomb_title = request.context.title
-    else:
-        honeycomb_title = "Wild honeycomb"
-    if hasattr(request.context, 'map'):
-        map = request.context.map
-    else:
-        map = None
-    cells = [(request.context[cell], request.resource_url(request.context, cell)) for cell in request.context]
-    return {'project': 'Honeycomb', 'title': honeycomb_title, 'map': map, 'cells': cells}
+    # Nodo raíz (el Honeycomb mismo)
+    root_node = {
+        "id": getattr(honeycomb, "id", str(uuid.uuid4())),
+        "data": {
+            "label": honeycomb_title,
+            "themeColor": "root",
+            "url": request.resource_url(honeycomb),
+            "icon": getattr(honeycomb, "icon", None),
+        },
+        "position": {"x": 0, "y": 0},  # en el centro
+        "type": "custom",
+        "width": 200,
+        "height": 80,
+    }
+
+    # Nodos hijos distribuidos en círculo
+    cells = list(honeycomb.values())
+    n = len(cells)
+    radius = 300
+    child_nodes = []
+    for i, cell in enumerate(cells):
+        angle = 2 * math.pi * i / n if n > 0 else 0
+        x = radius * math.cos(angle)
+        y = radius * math.sin(angle)
+
+        child_nodes.append({
+            "id": getattr(cell, "id", str(uuid.uuid4())),
+            "data": {
+                "label": getattr(cell, "title", ""),
+                "themeColor": getattr(cell, "themeColor", "default"),
+                "url": request.resource_url(cell),
+                "icon": getattr(cell, "icon", None),
+            },
+            "position": {"x": x, "y": y},
+            "type": "custom",
+            "width": 152,
+            "height": 58,
+        })
+
+    # Edges: del root hacia cada hijo
+    edges = [
+        {
+            "id": f"edge-{root_node['id']}-{child['id']}",
+            "source": root_node["id"],
+            "target": child["id"],
+            "type": "custom-label",
+        }
+        for child in child_nodes
+    ]
+
+    return {
+        "id": root_node["id"],
+        "title": honeycomb_title,
+        "nodes": [root_node] + child_nodes,
+        "edges": edges,
+    }
 
 
 @view_config(context=Honeycomb, request_method='POST')
