@@ -1,0 +1,24 @@
+@startgantt
+!theme blueprint
+scale 1920 width
+<style>
+ganttDiagram {
+	LineColor Gray
+	}
+</style>
+Project starts on 2025/08/01
+printscale weekly
+-- Plataforma Convida --
+[Configuración repositorio y contenedor de Docker] requires 2 weeks
+[Creación de la prueba de concepto] starts at [Configuración repositorio y contenedor de Docker]'s end and requires 3 weeks
+[Creación y configuración de pruebas] starts at [Creación de la prueba de concepto]'s end and requires 2 weeks
+[Integración de la API con el frontend] starts at [Creación y configuración de pruebas]'s end and requires 2 weeks
+[Integración de la API con el editor] starts at [Integración de la API con el frontend]'s end and requires 2 weeks
+[Internacionalización y localización] starts at [Integración de la API con el editor]'s end and requires 2 weeks
+[Autenticación y autorización] starts at [Integración de la API con el editor]'s end and requires 2 weeks
+[Prueba de concepto de Convida social] starts at [Integración de la API con el editor]'s end and requires 3 weeks
+[Perfil de usuario] starts at [Prueba de concepto de Convida social]'s end and requires 1 week
+[Registro de interacciones] starts at [Perfil de usuario]'s end and requires 3 weeks
+[Conformidad con ActivityPub] starts at [Registro de interacciones]'s end and requires 4 weeks
+[Flujos de trabajo para gestión de contenidos] starts at [Perfil de usuario]'s end and requires 5 weeks
+@endgantt

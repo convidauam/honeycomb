@@ -1,0 +1,23 @@
+[tools]
+python = "3.12"
+uv = "latest"
+
+[tasks.setup]
+description = "Set up the development environment"
+run = "uv sync --package honeycomb --all-groups"
+
+[tasks.dev]
+description = "Start the development environment for the project"
+run = "uv run .mise/tasks/dev.py"
+
+[tasks.test]
+description = "Run the test suite"
+run = "uv run pytest"
+
+[tasks.docker]
+description = "Build and run the Docker container"
+run = """docker build -t honeycomb:latest .
+docker run --name honeycomb -p 6543:6543 -d --rm honeycomb:latest"""
+
+[settings]
+idiomatic_version_file_enable_tools = ["python"]

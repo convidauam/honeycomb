@@ -18,6 +18,7 @@ def main(global_config, **settings):
         config.include('pyramid_retry')
         config.include('pyramid_zodbconn')
         config.include('.routes')
+        config.include('cornice')
         config.set_root_factory(root_factory)
         config.scan()
     return config.make_wsgi_app()

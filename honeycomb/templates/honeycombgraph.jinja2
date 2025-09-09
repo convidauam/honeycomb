@@ -1,0 +1,142 @@
+{% extends "layout.jinja2" %}
+
+{% block content %}
+<div class="content">
+  <h1>Honeycomb Graph</h1>
+  <h2>{{ title }}</h2>
+
+  <h3>Nodos disponibles</h3>
+  <ul>
+    {% for node, url in nodes %}
+      <li>
+        <a href="{{ url }}">{{ node.title }}</a> ({{ node.__name__ }})
+        [<a href="{{ url }}/edit">Editar</a>]
+      </li>
+    {% endfor %}
+  </ul>
+
+  <h3>Relaciones entre nodos</h3>
+  <ul>
+    {% for edge in edges %}
+      <li>
+        {{ edge.title }} (
+        <a href="{{ edge.from_url }}" target="_blank">{{ edge.from }}</a>
+        → 
+        <a href="{{ edge.to_url }}" target="_blank">{{ edge.to }}</a>
+        [{{ edge.kind }}])
+      </li>
+    {% endfor %}
+  </ul>
+
+  <p>
+    <a href="/grafo-principal/json" target="_blank">Ver JSON del grafo</a> |
+    <a href="{{ request.route_url('create_node') }}">Crear nuevo nodo</a>
+  </p>
+
+  <h3>Importar grafo desde JSON</h3>
+  <form method="post" enctype="multipart/form-data" action="/import-json">
+    <input type="file" name="json_file" accept=".json">
+    <input type="submit" value="Importar">
+  </form>
+
+  <div id="graph"></div>
+</div>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+  const nodes = {{ nodes_json|tojson }};
+  const links = {{ edges_json|tojson }};
+
+  const width = document.getElementById("graph").clientWidth;
+  const height = 500;
+
+  const svg = d3.select("#graph")
+    .append("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .style("background", "#a00");
+
+  svg.append("defs").append("marker")
+    .attr("id", "arrow")
+    .attr("viewBox", "0 -5 10 10")
+    .attr("refX", 20)
+    .attr("refY", 0)
+    .attr("markerWidth", 6)
+    .attr("markerHeight", 6)
+    .attr("orient", "auto")
+    .append("path")
+    .attr("d", "M0,-5L10,0L0,5")
+    .attr("fill", "#ffcc00");
+
+  const simulation = d3.forceSimulation(nodes)
+    .force("link", d3.forceLink(links).id(d => d.id).distance(150))
+    .force("charge", d3.forceManyBody().strength(-300))
+    .force("center", d3.forceCenter(width / 2, height / 2));
+
+  const link = svg.append("g")
+    .attr("stroke", "#ffcc00")
+    .attr("stroke-width", 2)
+    .selectAll("line")
+    .data(links)
+    .join("line")
+    .attr("marker-end", "url(#arrow)");
+
+  const node = svg.append("g")
+    .selectAll("circle")
+    .data(nodes)
+    .join("circle")
+    .attr("r", 20)
+    .attr("fill", "#a00")
+    .attr("stroke", "white")
+    .attr("stroke-width", 2)
+    .call(drag(simulation));
+
+  node.append("title").text(d => d.content || "Sin contenido");
+
+  const label = svg.append("g")
+    .selectAll("text")
+    .data(nodes)
+    .join("text")
+    .text(d => d.title)
+    .attr("fill", "white")
+    .attr("text-anchor", "middle")
+    .attr("font-size", "12px");
+
+  simulation.on("tick", () => {
+    link
+      .attr("x1", d => d.source.x)
+      .attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x)
+      .attr("y2", d => d.target.y);
+
+    node
+      .attr("cx", d => d.x)
+      .attr("cy", d => d.y);
+
+    label
+      .attr("x", d => d.x)
+      .attr("y", d => d.y + 4);
+  });
+
+  function drag(simulation) {
+    function dragstarted(event, d) {
+      if (!event.active) simulation.alphaTarget(0.3).restart();
+      d.fx = d.x;
+      d.fy = d.y;
+    }
+    function dragged(event, d) {
+      d.fx = event.x;
+      d.fy = event.y;
+    }
+    function dragended(event, d) {
+      if (!event.active) simulation.alphaTarget(0);
+      d.fx = null;
+      d.fy = null;
+    }
+    return d3.drag()
+      .on("start", dragstarted)
+      .on("drag", dragged)
+      .on("end", dragended);
+  }
+</script>
+{% endblock content %}

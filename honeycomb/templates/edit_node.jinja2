@@ -1,0 +1,30 @@
+{% extends "layout.jinja2" %}
+
+{% block content %}
+<div class="content">
+  <h1 class="font-semi-bold">Editar nodo: <span class="font-normal">{{ node.title }}</span></h1>
+
+  <form method="post" class="form">
+    <label for="title">Título:</label>
+    <input type="text" id="title" name="title" value="{{ node.title }}">
+
+    {% if node.contents is defined %}
+      <label for="contents">Contenido:</label>
+      <textarea id="contents" name="contents" rows="5">{{ node.contents }}</textarea>
+    {% endif %}
+
+    <label for="connect_to">Conectar con otro nodo:</label>
+    <select id="connect_to" name="connect_to">
+      <option value="">-- Selecciona un nodo --</option>
+      {% set grafo = request.root['grafo-principal'] %}
+      {% for other in grafo.nodes %}
+        {% if other.__name__ != node.__name__ %}
+          <option value="{{ other.__name__ }}">{{ other.title }}</option>
+        {% endif %}
+      {% endfor %}
+    </select>
+
+    <button type="submit">Guardar</button>
+  </form>
+</div>
+{% endblock content %}
