@@ -9,12 +9,21 @@ from ..models import *
 
 @view_config(context=BeeHive, renderer='templates/beehive.jinja2')
 def beehive_view(context, request):
-    # La vista ahora está limpia y solo prepara los datos para la plantilla.
+    grafo = context.get('grafo-principal')
+    print("DEBUG - grafo:", type(grafo), grafo)
+    print("DEBUG - grafo nodes:", getattr(grafo, 'nodes', None))
+    print("DEBUG - grafo edges:", getattr(grafo, 'edges', None))
+    
+    if grafo is not None and grafo.nodes and grafo.edges:
+        return HTTPFound(location=request.resource_url(grafo))
+        
+    # Si no existe, muestra la vista normal
     honeycombs = []
     for name, hc in context.items():
-        hc_url = request.resource_url(hc)
-        cells = [(cell, request.resource_url(cell)) for cell in hc.values()]
-        honeycombs.append((hc, hc_url, cells))
+        if isinstance(hc, Honeycomb):
+            hc_url = request.resource_url(hc)
+            cells = [(cell, request.resource_url(cell)) for cell in hc.values()]
+            honeycombs.append((hc, hc_url, cells))
     return {
         'project': 'BeeHive Project',
         'title': context.__name__,
@@ -62,14 +71,11 @@ def textcell(request):
 
 @view_config(context=CellText, name='CreateNew', renderer='templates/view_cell_text.jinja2')
 def view_cell_text(context, request):
-    # Ejemplo de creación de un nuevo nodo
     if 'form.submitted' in request.params:
         title = request.params.get('title', '')
         contents = request.params.get('contents', '')
         nuevo_nodo = CellText(name=title, contents=contents, title=title)
-        # Agregar el nodo al Honeycomb actual
         request.context[nuevo_nodo.__name__] = nuevo_nodo
-        # Agregar el nodo al índice de BeeHive
         beehive = traversal.find_root(resource=request.context)
         beehive.add_node(nuevo_nodo)
         return HTTPFound(location=request.resource_url(nuevo_nodo))
@@ -162,3 +168,29 @@ def edit_cell_icon(context, request):
         context.icon = request.params.get('icon', context.icon)
         return HTTPFound(location=request.resource_url(context))
     return {"cell": context}
+
+@view_config(context=HoneycombGraph, renderer='templates/honeycombgraph.jinja2')
+def honeycomb_graph_view(context, request):
+    # Prepara la lista de nodos y sus URLs
+    print("DEBUG - Nodos en grafo:", context.nodes)
+    print("DEBUG - Aristas en grafo:", context.edges)
+    nodes = [(node, request.resource_url(node)) for node in context.nodes]
+
+    # Prepara la lista de aristas (edges)
+    edges = []
+    for edge in context.edges:
+        from_node = edge.from_node
+        to_node = edge.to_node
+        edges.append({
+            "title": getattr(edge, "title", ""),
+            "from": getattr(from_node, 'title', getattr(from_node, '__name__', str(from_node))),
+            "from_url": request.resource_url(from_node) if hasattr(from_node, '__name__') else "#",
+            "to": getattr(to_node, 'title', getattr(to_node, '__name__', str(to_node))),
+            "to_url": request.resource_url(to_node) if hasattr(to_node, '__name__') else "#",
+            "kind": getattr(edge, "kind", "")
+        })
+    return {
+        "title": context.title,
+        "nodes": nodes,
+        "edges": edges
+    }
