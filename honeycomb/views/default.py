@@ -9,18 +9,9 @@ from ..models import *
 
 @view_config(context=BeeHive, renderer='templates/beehive.jinja2')
 def beehive_view(context, request):
-    grafo = context.get('grafo-principal')
-    print("DEBUG - grafo:", type(grafo), grafo)
-    print("DEBUG - grafo nodes:", getattr(grafo, 'nodes', None))
-    print("DEBUG - grafo edges:", getattr(grafo, 'edges', None))
-    
-    if grafo is not None and grafo.nodes and grafo.edges:
-        return HTTPFound(location=request.resource_url(grafo))
-        
-    # Si no existe, muestra la vista normal
     honeycombs = []
     for name, hc in context.items():
-        if isinstance(hc, Honeycomb):
+        if isinstance(hc, Honeycomb): 
             hc_url = request.resource_url(hc)
             cells = [(cell, request.resource_url(cell)) for cell in hc.values()]
             honeycombs.append((hc, hc_url, cells))

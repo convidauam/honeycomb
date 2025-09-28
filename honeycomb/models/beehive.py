@@ -101,15 +101,17 @@ class CellEdge(Persistent):
         self.to_node = to_node
         self.kind = kind
 
-class HoneycombGraph(PersistentMapping):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.title = "Grafo principal"
+class HoneycombGraph(Honeycomb): 
+    def __init__(self, name="", title="", *args, **kwargs):
+        super().__init__(name, title)  
         self.nodes = PersistentList()
         self.edges = PersistentList()
 
     def add_node(self, node):
         self.nodes.append(node)
+        # También agregar al mapping para compatibilidad con Honeycomb
+        if hasattr(node, '__name__') and node.__name__:
+            self[node.__name__] = node
         self._p_changed = True
 
     def add_edge(self, edge):
@@ -133,7 +135,6 @@ class HoneycombGraph(PersistentMapping):
                 "name": getattr(node, '__name__', ''),
                 "title": getattr(node, 'title', ''),
                 "contents": getattr(node, 'contents', ''),
-                # Agrega aquí cualquier otro atributo del nodo que el frontend necesite
             } for node in self.nodes
         }
 
@@ -232,6 +233,14 @@ class CellText(CellNode):
         self.title = title
         self.contents = contents
         self.icon = icon
+        
+        # Propiedades para el editor
+        self.position = {}
+        self.themeColor = "default"
+        self.iconUrl = ""
+        self.width = 168
+        self.height = 78
+        self.node_type = "custom"
 
     def set_icon(self, icon):
         self.icon = icon

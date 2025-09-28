@@ -38,10 +38,11 @@ def appmaker(zodb_root):
         app_root = BeeHive()
 
         # --- Crear y configurar el grafo principal ---
-        grafo_principal = HoneycombGraph()
-        grafo_principal.__name__ = 'grafo-principal'
-        grafo_principal.title = "Ciclo Biológico de las Abejas"
-        
+        grafo_principal = HoneycombGraph(
+            name='panal-de-juegos',
+            title="Ciclo Biológico de las Abejas"
+        )
+
         # --- Cargar datos desde el JSON ---
         graph_data = json.loads(initial_graph_json)
         
@@ -51,13 +52,12 @@ def appmaker(zodb_root):
         # 1. Crear todos los objetos de nodo
         for node_data in graph_data['nodes']:
             json_id = node_data['id']
-            # Usamos el ID del JSON como __name__ para que sea único y localizable
             node_obj = CellText(
                 name=json_id,
                 title=node_data['data']['label'],
-                contents=node_data['data']['label'] # Opcional: puedes poner más detalles aquí
+                contents=node_data['data']['label'] 
             )
-            node_obj.__parent__ = grafo_principal # Asignar padre para traversal
+            node_obj.__parent__ = grafo_principal 
             
             # Añadir al grafo principal y al mapa temporal
             grafo_principal.add_node(node_obj)
@@ -68,15 +68,13 @@ def appmaker(zodb_root):
             source_id = edge_data['source']
             target_id = edge_data['target']
             
-            # Buscar los objetos de nodo correspondientes
             from_node = nodes_map.get(source_id)
             to_node = nodes_map.get(target_id)
             
-            # Solo crear la arista si ambos nodos existen
             if from_node and to_node:
                 edge_obj = CellEdge(
-                    name=f"edge-{uuid.uuid4()}", # Nombre único para la arista
-                    title=edge_data.get('label', ''), # Usar .get para manejar labels nulos
+                    name=f"edge-{uuid.uuid4()}", 
+                    title=edge_data.get('label', ''), 
                     from_node=from_node,
                     to_node=to_node,
                     kind="default"
@@ -85,7 +83,7 @@ def appmaker(zodb_root):
 
         # --- Asignar el padre al grafo y luego añadir al root ---
         grafo_principal.__parent__ = app_root
-        app_root['grafo-principal'] = grafo_principal
+        app_root['panal-de-juegos'] = grafo_principal
         
         print(f"DEBUG - Grafo '{grafo_principal.title}' cargado con {len(grafo_principal.nodes)} nodos y {len(grafo_principal.edges)} aristas.")
 
