@@ -3,6 +3,9 @@ import math
 from cornice.resource import resource
 from pyramid import traversal
 from ..models import *
+import logging
+
+log = logging.getLogger(__name__)
 
 
 @resource(collection_path='/api/v1/honeycombs', path='/api/v1/honeycombs/{name}', cors_origins=('*',), factory='honeycomb.root_factory')
@@ -95,8 +98,7 @@ class NodeResource:
 
     def get(self):
         root = traversal.find_root(resource=self.context)
-        print("Tipo de root:", type(root))
-        print("Nodos en índice:", list(root.__nodes__.keys()))
+        log.debug("Nodos en índice: %s", list(root.__nodes__.keys()))
         if not hasattr(root, "__nodes__"):
             root.__nodes__ = OOBTree()
         if not hasattr(root, "__edges__"):
@@ -104,11 +106,7 @@ class NodeResource:
 
         node_id = self.request.matchdict['node_id']
         node = root.__nodes__.get(node_id)
-        print("Nodo encontrado:", repr(node), type(node))
-        try:
-            print("node.title:", node.title)
-        except Exception as e:
-            print("Error accediendo a node.title:", e)
+
         if node is None:
             self.request.response.status = 404
             return {'error': 'Node not found'}
