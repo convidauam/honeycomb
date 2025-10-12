@@ -190,4 +190,17 @@ class CellWebContent(CellNode):
 
     def get_icon(self):
         return self.icon
+    
+class PollenBadge:
+    def __init__(self, id: uuid.UUID, name: str, title: str, icon: str):
+        self.id = id
+        self.name = name
+        self.title = title
+        self.icon = icon
+
+class BeePath:
+    def __init__(self, sequence=None, required=None, granted=None):
+        self.sequence = PersistentList(sequence if sequence is not None else [])
+        self.required = set(required if required is not None else [])
+        self.granted = set(granted if granted is not None else [])
 
