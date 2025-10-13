@@ -64,7 +64,7 @@ class HoneycombResource:
                     "label": cell.title,
                     "themeColor": "default",
                     "url": self.request.resource_url(cell),
-                    "icon": cell.icon,
+                    "icon": getattr(cell, 'icon', None),
                 },
                 "position": {"x": x, "y": y},
                 "type": "custom",
@@ -123,8 +123,8 @@ class NodeResource:
 
 
         if hasattr(node, "nodes") and hasattr(node, "edges"):
-            data["nodes"] = node.nodes
-            data["edges"] = node.edges
+            data["nodes"] = [{'id': str(child.id), 'label': getattr(child, 'title', ''), 'url': self.request.resource_url(child)} for child in node.nodes]
+            data["edges"] = [{'source': str(edge.from_node.id), 'target': str(edge.to_node.id), 'id': getattr(edge, 'id', uuid.uuid4().hex), 'label': edge.title, 'type': "custom-label", 'data': {'hasArrow': False}} for edge in node.edges]
 
         elif hasattr(node, "values"):
             for child in node.values():

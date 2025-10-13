@@ -1,0 +1,38 @@
+{% extends "layout.jinja2" %}
+
+{% block content %}
+<div class="content">
+  <h1>Honeycomb Graph</h1>
+  <h2>{{ title }}</h2>
+
+  <h3>Nodos disponibles</h3>
+  <ul>
+    {% for node, url in nodes %}
+      <li>
+        <a href="{{ url }}">{{ node.title }}</a> ({{ node.__name__ }})
+      </li>
+    {% else %}
+      <li>No hay nodos en el grafo.</li>
+    {% endfor %}
+  </ul>
+
+  <h3>Relaciones entre nodos</h3>
+  <ul>
+    {% for edge in edges %}
+      <li>
+        {{ edge.title }} (
+        <a href="{{ edge.from_url }}">{{ edge.from }}</a>
+        → 
+        <a href="{{ edge.to_url }}">{{ edge.to }}</a>
+        [{{ edge.kind }}])
+      </li>
+    {% else %}
+      <li>No hay relaciones en el grafo.</li>
+    {% endfor %}
+  </ul>
+
+  <p>
+    <!-- <a href="/editor?json=/panal-de-juegos/json">Abrir en editor</a> -->
+  </p>
+</div>
+{% endblock content %}

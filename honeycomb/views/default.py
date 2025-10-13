@@ -162,3 +162,29 @@ def edit_cell_icon(context, request):
         context.icon = request.params.get('icon', context.icon)
         return HTTPFound(location=request.resource_url(context))
     return {"cell": context}
+
+@view_config(context=HoneycombGraph, renderer='templates/honeycombgraph.jinja2')
+def honeycomb_graph_view(context, request):
+    # Prepara la lista de nodos y sus URLs
+    print("DEBUG - Nodos en grafo:", context.nodes)
+    print("DEBUG - Aristas en grafo:", context.edges)
+    nodes = [(node, request.resource_url(node)) for node in context.nodes]
+
+    # Prepara la lista de aristas (edges)
+    edges = []
+    for edge in context.edges:
+        from_node = edge.from_node
+        to_node = edge.to_node
+        edges.append({
+            "title": getattr(edge, "title", ""),
+            "from": getattr(from_node, 'title', getattr(from_node, '__name__', str(from_node))),
+            "from_url": request.resource_url(from_node) if hasattr(from_node, '__name__') else "#",
+            "to": getattr(to_node, 'title', getattr(to_node, '__name__', str(to_node))),
+            "to_url": request.resource_url(to_node) if hasattr(to_node, '__name__') else "#",
+            "kind": getattr(edge, "kind", "")
+        })
+    return {
+        "title": context.title,
+        "nodes": nodes,
+        "edges": edges
+    }

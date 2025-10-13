@@ -5,9 +5,9 @@ def appmaker(zodb_root):
         app_root = BeeHive()
         
         # --- Creación del Honeycomb por defecto ---
-        hc = Honeycomb('default', "Convida Abejas")
+        hc = Honeycomb('demo', "Demo Convida")
         hc.__parent__ = app_root
-        app_root['default'] = hc
+        app_root['demo'] = hc
 
         cell1 = CellText('intro', "Welcome text", title="Introduction")
         cell1.__parent__ = hc
@@ -138,7 +138,32 @@ def appmaker(zodb_root):
                 }
             )
             print(f"Se agregó el juego '{unity_game_name}'")
-        
+
+        #Importando grafos desde JSON
+
+        abejas = Honeycomb('abejas', "Convida Abejas")
+
+        with open("honeycomb/static/assets/paisaje_tematico.json") as f:
+            mapa = HoneycombGraph.from_json(f.read(), name="mapa-sitio", title="Paisaje temático")
+
+        mapa.__parent__ = abejas
+        abejas[mapa.__name__] = mapa
+        app_root.add_node(mapa)
+
+        reproduccion = mapa['reproducción']
+
+        with open("honeycomb/static/assets/grafo_reproduccion.json") as f:
+            grafo = HoneycombGraph.from_json(f.read(), name="ciclo-reproductivo", title="Ciclo reproductivo")
+
+        grafo.__parent__ = reproduccion
+        reproduccion[grafo.__name__] = grafo
+        app_root.add_node(grafo)
+        grafo._p_changed = True
+
+        abejas.__parent__ = app_root
+        app_root['abejas'] = abejas
+
+
         zodb_root['app_root'] = app_root
         print("Nodos en índice:", list(app_root.__nodes__.keys()))
     return zodb_root['app_root']

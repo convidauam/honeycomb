@@ -1,0 +1,825 @@
+{
+  "nodes": [
+    {
+      "id": "node-ce49cd1d-df8f-4c91-bf5d-9c1d48dc76dd",
+      "data": {
+        "label": "Forrajera",
+        "themeColor": "default"
+      }
+    },
+    {
+      "id": "node-c88ea8ef-e632-4007-8831-b62fb752e4c4",
+      "data": {
+        "label": "Guardiana",
+        "themeColor": "default"
+      }
+    },
+    {
+      "id": "node-7f27688e-2406-4d48-8ebf-476f7c0c0a70",
+      "data": {
+        "label": "Nodriza",
+        "themeColor": "default"
+      }
+    },
+    {
+      "id": "node-643b6916-7d21-4d8b-9fd1-0e38bceff195",
+      "data": {
+        "label": "Limpiadora",
+        "themeColor": "default"
+      }
+    },
+    {
+      "id": "node-773c88ff-5690-45a8-b312-83f8e67863e4",
+      "data": {
+        "label": "Obreras",
+        "themeColor": "default",
+        "url": "https://youtu.be/oHg5SJYRHA0?si=HTFgp3vMRY2oAtgg"
+      }
+    },
+    {
+      "id": "node-5e0a2467-777d-4092-96f4-b7d6b87cf463",
+      "data": {
+        "label": "Colonización",
+        "themeColor": "default"
+      }
+    },
+    {
+      "id": "node-86a717ba-03e3-46fa-b5c7-d84013b6bf1f",
+      "data": {
+        "label": "Radionovela",
+        "themeColor": "amber"
+      }
+    },
+    {
+      "id": "node-47571167-50a0-4e62-a5ed-2d4187a9e89f",
+      "data": {
+        "label": "Organización",
+        "themeColor": "default"
+      }
+    },
+    {
+      "id": "node-11403c32-c191-4fb6-b415-3c33a7c8c018",
+      "data": {
+        "label": "Feromonas",
+        "themeColor": "default"
+      }
+    },
+    {
+      "id": "node-449093b1-64dd-4451-b42b-3f0d6fd526c6",
+      "data": {
+        "label": "Comunicación",
+        "themeColor": "default",
+        "url": "http://localhost:8081"
+      }
+    },
+    {
+      "id": "node-f02cec8e-e481-491a-970a-b7f2855c1439",
+      "data": {
+        "label": "Superorganismo",
+        "themeColor": "default"
+      }
+    },
+    {
+      "id": "node-28d83479-fb76-44f8-b74a-283624477c7f",
+      "data": {
+        "label": "Vuelo",
+        "themeColor": "amber"
+      }
+    },
+    {
+      "id": "node-cd8de5ee-a168-47e6-a0ca-07ebf33c0fad",
+      "data": {
+        "label": "Alimentación",
+        "themeColor": "default",
+        "url": "http://localhost:8080"
+      }
+    },
+    {
+      "id": "node-12e6d5c9-6273-498a-9346-f233eeff7906",
+      "data": {
+        "label": "Mecanismos de libado",
+        "themeColor": "amber"
+      }
+    },
+    {
+      "id": "node-8e0c4f41-14da-4809-bb4e-6944bec696d2",
+      "data": {
+        "label": "Fis. Reproductiva",
+        "themeColor": "default"
+      }
+    },
+    {
+      "id": "node-9621b6a1-4e48-4a40-9ad3-c417dac50b23",
+      "data": {
+        "label": "Fisiología",
+        "themeColor": "default"
+      }
+    },
+    {
+      "id": "node-fe7f104b-039d-463c-a0ee-df3f0b266904",
+      "data": {
+        "label": "Reina y Zángano",
+        "themeColor": "default"
+      }
+    },
+    {
+      "id": "node-e44ad503-569b-47a6-a67b-dcf0123a9f57",
+      "data": {
+        "label": "Biología",
+        "themeColor": "default"
+      }
+    },
+    {
+      "id": "node-64e221f1-72cb-4980-8400-4bfe429e86d2",
+      "data": {
+        "label": "Organismo - especie",
+        "themeColor": "default"
+      }
+    },
+    {
+      "id": "node-24542b5b-ece1-45fa-975e-6c54744e1630",
+      "data": {
+        "label": "Reproducción",
+        "themeColor": "default"
+      },
+      "type": "custom"
+    },
+    {
+      "id": "node-d7874ede-4f82-4dce-8f70-29bc590be148",
+      "data": {
+        "label": "Evolución",
+        "themeColor": "default"
+      }
+    },
+    {
+      "id": "node-02ff5806-2dd2-430a-b282-5477dc0aa6dc",
+      "data": {
+        "label": "Taxonomía",
+        "themeColor": "default",
+        "url": "https://es.wikipedia.org/wiki/Apis_mellifera"
+      }
+    },
+    {
+      "id": "node-4d27461f-7bb9-4d05-82a8-2e32800716b3",
+      "data": {
+        "label": "Diversidad",
+        "themeColor": "default"
+      }
+    },
+    {
+      "id": "node-87901936-a51d-424c-a29e-cd96038b4a66",
+      "data": {
+        "label": "Clasificación",
+        "themeColor": "amber"
+      }
+    },
+    {
+      "id": "node-f2db77e7-24c8-4a58-ba81-dccd1614c37a",
+      "data": {
+        "label": "Ecología",
+        "themeColor": "default"
+      }
+    },
+    {
+      "id": "node-3c2d9391-1f60-40f9-bcaa-ac94416b536d",
+      "data": {
+        "label": "Historias de Vida",
+        "themeColor": "default"
+      }
+    },
+    {
+      "id": "node-441746f9-73d8-4a78-a509-becd8cbec0d2",
+      "data": {
+        "label": "Calendario",
+        "themeColor": "default"
+      }
+    },
+    {
+      "id": "node-c7809203-c284-435e-9e52-668cf65e10f9",
+      "data": {
+        "label": "Humano-Abeja",
+        "themeColor": "default"
+      }
+    },
+    {
+      "id": "node-725d072f-24fb-4548-8b25-25e4c85c503d",
+      "data": {
+        "label": "Cultura",
+        "themeColor": "default"
+      }
+    },
+    {
+      "id": "node-4760f5f0-8847-4f43-b5e8-83d23631074a",
+      "data": {
+        "label": "Domesticación",
+        "themeColor": "default"
+      }
+    },
+    {
+      "id": "node-27656d9b-5345-4730-8582-c58741f2ecf3",
+      "data": {
+        "label": "Cadena Reproductiva",
+        "themeColor": "default"
+      }
+    },
+    {
+      "id": "node-4c41ad63-b949-4ad1-8998-6a52a5461bf7",
+      "data": {
+        "label": "Agricultura",
+        "themeColor": "default"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "node-773c88ff-5690-45a8-b312-83f8e67863e4",
+      "sourceHandle": "top-source",
+      "target": "node-ce49cd1d-df8f-4c91-bf5d-9c1d48dc76dd",
+      "targetHandle": "bottom-target",
+      "id": "edge-d345c5fb-838d-40ae-baf3-6b142b35d05f",
+      "type": "default",
+      "selected": false,
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-773c88ff-5690-45a8-b312-83f8e67863e4",
+      "sourceHandle": "top-source",
+      "target": "node-c88ea8ef-e632-4007-8831-b62fb752e4c4",
+      "targetHandle": "bottom-target",
+      "id": "edge-a8ba16cf-ace8-4463-ac03-3a36414b5cde",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-773c88ff-5690-45a8-b312-83f8e67863e4",
+      "sourceHandle": "top-source",
+      "target": "node-7f27688e-2406-4d48-8ebf-476f7c0c0a70",
+      "targetHandle": "bottom-target",
+      "id": "edge-d512c339-8c81-4197-ab75-91692630fd82",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-5e0a2467-777d-4092-96f4-b7d6b87cf463",
+      "sourceHandle": "top-source",
+      "target": "node-773c88ff-5690-45a8-b312-83f8e67863e4",
+      "targetHandle": "top-target",
+      "id": "edge-314fc21b-1a56-4273-aeab-ce98436b730f",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-47571167-50a0-4e62-a5ed-2d4187a9e89f",
+      "sourceHandle": "top-source",
+      "target": "node-773c88ff-5690-45a8-b312-83f8e67863e4",
+      "targetHandle": "bottom-target",
+      "id": "edge-4341a903-fad8-4f41-b401-6e86f77f09ad",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-11403c32-c191-4fb6-b415-3c33a7c8c018",
+      "sourceHandle": "top-source",
+      "target": "node-773c88ff-5690-45a8-b312-83f8e67863e4",
+      "targetHandle": "bottom-target",
+      "id": "edge-01423e26-b905-489e-a944-4117516d1312",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-449093b1-64dd-4451-b42b-3f0d6fd526c6",
+      "sourceHandle": "top-source",
+      "target": "node-47571167-50a0-4e62-a5ed-2d4187a9e89f",
+      "targetHandle": "bottom-target",
+      "id": "edge-4c50d000-e5d7-49ed-8424-bbd5b53ecbab",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-cd8de5ee-a168-47e6-a0ca-07ebf33c0fad",
+      "sourceHandle": "top-source",
+      "target": "node-449093b1-64dd-4451-b42b-3f0d6fd526c6",
+      "targetHandle": "bottom-target",
+      "id": "edge-ccd8c51e-157c-4151-be63-6a2e5fd74b8e",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-28d83479-fb76-44f8-b74a-283624477c7f",
+      "sourceHandle": "right-source",
+      "target": "node-449093b1-64dd-4451-b42b-3f0d6fd526c6",
+      "targetHandle": "left-target",
+      "id": "edge-66cfb713-26a7-416e-b3a6-2769f0c501f9",
+      "type": "default",
+      "selected": false,
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-cd8de5ee-a168-47e6-a0ca-07ebf33c0fad",
+      "sourceHandle": "left-source",
+      "target": "node-12e6d5c9-6273-498a-9346-f233eeff7906",
+      "targetHandle": "right-target",
+      "id": "edge-bf13def9-b1df-49c3-bcb5-a060015bc256",
+      "type": "default",
+      "selected": false,
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-9621b6a1-4e48-4a40-9ad3-c417dac50b23",
+      "sourceHandle": "top-source",
+      "target": "node-cd8de5ee-a168-47e6-a0ca-07ebf33c0fad",
+      "targetHandle": "bottom-target",
+      "id": "edge-89976abe-f5cb-4abe-81e2-4df26af9cef9",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-9621b6a1-4e48-4a40-9ad3-c417dac50b23",
+      "sourceHandle": "top-source",
+      "target": "node-8e0c4f41-14da-4809-bb4e-6944bec696d2",
+      "targetHandle": "bottom-target",
+      "id": "edge-c2d83d78-69de-48b0-92ee-8cbc5e2a29dc",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-f02cec8e-e481-491a-970a-b7f2855c1439",
+      "sourceHandle": "bottom-source",
+      "target": "node-8e0c4f41-14da-4809-bb4e-6944bec696d2",
+      "targetHandle": "top-target",
+      "id": "edge-9269fde6-2439-42a2-9614-f3dceaea79d6",
+      "type": "default",
+      "selected": false,
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-47571167-50a0-4e62-a5ed-2d4187a9e89f",
+      "sourceHandle": "bottom-source",
+      "target": "node-f02cec8e-e481-491a-970a-b7f2855c1439",
+      "targetHandle": "top-target",
+      "id": "edge-66eb25b2-b5c8-4b97-b727-41527f6fc21d",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-773c88ff-5690-45a8-b312-83f8e67863e4",
+      "sourceHandle": "top-source",
+      "target": "node-643b6916-7d21-4d8b-9fd1-0e38bceff195",
+      "targetHandle": "bottom-target",
+      "id": "edge-c8a3dcac-4749-409e-8090-25a2185ff5ad",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-86a717ba-03e3-46fa-b5c7-d84013b6bf1f",
+      "sourceHandle": "right-source",
+      "target": "node-773c88ff-5690-45a8-b312-83f8e67863e4",
+      "targetHandle": "left-target",
+      "id": "edge-d943f0f7-735b-4426-a869-2c57c578a691",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-fe7f104b-039d-463c-a0ee-df3f0b266904",
+      "sourceHandle": "top-source",
+      "target": "node-11403c32-c191-4fb6-b415-3c33a7c8c018",
+      "targetHandle": "bottom-target",
+      "id": "edge-5e77d4ce-a1df-4b75-9be3-efe28904d9a0",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-fe7f104b-039d-463c-a0ee-df3f0b266904",
+      "sourceHandle": "left-source",
+      "target": "node-47571167-50a0-4e62-a5ed-2d4187a9e89f",
+      "targetHandle": "right-target",
+      "id": "edge-fdbf212a-dcb4-450c-8c0b-e6eb68e565ae",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-fe7f104b-039d-463c-a0ee-df3f0b266904",
+      "sourceHandle": "right-source",
+      "target": "node-5e0a2467-777d-4092-96f4-b7d6b87cf463",
+      "targetHandle": "bottom-target",
+      "id": "edge-dab5a2da-84a3-4248-80c5-9248fa2c10fd",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-9621b6a1-4e48-4a40-9ad3-c417dac50b23",
+      "sourceHandle": "right-source",
+      "target": "node-e44ad503-569b-47a6-a67b-dcf0123a9f57",
+      "targetHandle": "left-target",
+      "id": "edge-201f5543-f771-48ec-92e2-a345d02ce924",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-5e0a2467-777d-4092-96f4-b7d6b87cf463",
+      "sourceHandle": "right-source",
+      "target": "node-64e221f1-72cb-4980-8400-4bfe429e86d2",
+      "targetHandle": "left-target",
+      "id": "edge-404032d9-5403-4421-b599-cc9266d97a76",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-24542b5b-ece1-45fa-975e-6c54744e1630",
+      "sourceHandle": "top-source",
+      "target": "node-64e221f1-72cb-4980-8400-4bfe429e86d2",
+      "targetHandle": "bottom-target",
+      "id": "edge-6a9cf994-00cb-4907-9968-058755dba53f",
+      "type": "default",
+      "selected": false,
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-24542b5b-ece1-45fa-975e-6c54744e1630",
+      "sourceHandle": "bottom-source",
+      "target": "node-e44ad503-569b-47a6-a67b-dcf0123a9f57",
+      "targetHandle": "top-target",
+      "id": "edge-cf957d71-5b08-4198-93e7-7cc83e5e39c7",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-d7874ede-4f82-4dce-8f70-29bc590be148",
+      "sourceHandle": "top-source",
+      "target": "node-e44ad503-569b-47a6-a67b-dcf0123a9f57",
+      "targetHandle": "bottom-target",
+      "id": "edge-309fff89-49f4-4402-8cdb-a7393ab8be29",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-e44ad503-569b-47a6-a67b-dcf0123a9f57",
+      "sourceHandle": "bottom-source",
+      "target": "node-02ff5806-2dd2-430a-b282-5477dc0aa6dc",
+      "targetHandle": "top-target",
+      "id": "edge-b3171512-3c68-4e69-a96e-bdec010356cc",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-4d27461f-7bb9-4d05-82a8-2e32800716b3",
+      "sourceHandle": "top-source",
+      "target": "node-d7874ede-4f82-4dce-8f70-29bc590be148",
+      "targetHandle": "bottom-target",
+      "id": "edge-c660b185-7fee-4ee0-a2a3-193da937a1e1",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-4d27461f-7bb9-4d05-82a8-2e32800716b3",
+      "sourceHandle": "top-source",
+      "target": "node-02ff5806-2dd2-430a-b282-5477dc0aa6dc",
+      "targetHandle": "bottom-target",
+      "id": "edge-237a0517-3953-4c8d-972f-20a3a5221b6f",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-02ff5806-2dd2-430a-b282-5477dc0aa6dc",
+      "sourceHandle": "right-source",
+      "target": "node-87901936-a51d-424c-a29e-cd96038b4a66",
+      "targetHandle": "top-target",
+      "id": "edge-21ce0546-9b39-4b9b-aba8-6c2ec02a486b",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-e44ad503-569b-47a6-a67b-dcf0123a9f57",
+      "sourceHandle": "right-source",
+      "target": "node-f2db77e7-24c8-4a58-ba81-dccd1614c37a",
+      "targetHandle": "left-target",
+      "id": "edge-82d33080-0217-4cdf-b3ee-7fd7d7188e7c",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-3c2d9391-1f60-40f9-bcaa-ac94416b536d",
+      "sourceHandle": "top-source",
+      "target": "node-f2db77e7-24c8-4a58-ba81-dccd1614c37a",
+      "targetHandle": "bottom-target",
+      "id": "edge-5530c712-1dd8-4218-8f4a-07b2eda26cdc",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-f2db77e7-24c8-4a58-ba81-dccd1614c37a",
+      "sourceHandle": "top-source",
+      "target": "node-441746f9-73d8-4a78-a509-becd8cbec0d2",
+      "targetHandle": "bottom-target",
+      "id": "edge-d99a5a4a-9e25-4d62-adcf-5ab289e55f72",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-3c2d9391-1f60-40f9-bcaa-ac94416b536d",
+      "sourceHandle": "top-source",
+      "target": "node-441746f9-73d8-4a78-a509-becd8cbec0d2",
+      "targetHandle": "bottom-target",
+      "id": "edge-4f12b0f7-2771-4efa-81f4-20ba186137de",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-441746f9-73d8-4a78-a509-becd8cbec0d2",
+      "sourceHandle": "top-source",
+      "target": "node-c7809203-c284-435e-9e52-668cf65e10f9",
+      "targetHandle": "bottom-target",
+      "id": "edge-4478f94e-1725-4e62-9fd2-8e1a7e0e4c77",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-725d072f-24fb-4548-8b25-25e4c85c503d",
+      "sourceHandle": "left-source",
+      "target": "node-c7809203-c284-435e-9e52-668cf65e10f9",
+      "targetHandle": "right-target",
+      "id": "edge-e61a1997-6326-42d6-b577-9cfbda7fdedc",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-c7809203-c284-435e-9e52-668cf65e10f9",
+      "sourceHandle": "left-source",
+      "target": "node-24542b5b-ece1-45fa-975e-6c54744e1630",
+      "targetHandle": "right-target",
+      "id": "edge-fdef2a81-42d2-48be-87e9-7e15de71fe36",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-c7809203-c284-435e-9e52-668cf65e10f9",
+      "sourceHandle": "top-source",
+      "target": "node-4760f5f0-8847-4f43-b5e8-83d23631074a",
+      "targetHandle": "bottom-target",
+      "id": "edge-bd3d4357-4c43-46aa-be7d-251912735f21",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-4760f5f0-8847-4f43-b5e8-83d23631074a",
+      "sourceHandle": "right-source",
+      "target": "node-27656d9b-5345-4730-8582-c58741f2ecf3",
+      "targetHandle": "top-target",
+      "id": "edge-b2d8fcbc-f471-4f9c-979c-6aa9d4cf8b43",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-27656d9b-5345-4730-8582-c58741f2ecf3",
+      "sourceHandle": "right-source",
+      "target": "node-4c41ad63-b949-4ad1-8998-6a52a5461bf7",
+      "targetHandle": "top-target",
+      "id": "edge-81796a2f-d693-4907-badb-0ad13f5e27c5",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "source": "node-4c41ad63-b949-4ad1-8998-6a52a5461bf7",
+      "sourceHandle": "right-source",
+      "target": "node-725d072f-24fb-4548-8b25-25e4c85c503d",
+      "targetHandle": "top-target",
+      "id": "edge-e4a0991a-6859-4e88-aa4d-16d2137087e1",
+      "type": "default",
+      "data": {
+        "hasArrow": false
+      },
+      "style": {
+        "stroke": "#000000",
+        "strokeWidth": 2
+      }
+    }
+  ]
+}
