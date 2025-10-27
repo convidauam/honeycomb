@@ -1,0 +1,24 @@
+{% extends "layout.jinja2" %}
+
+{% block header %}
+    <div class="header row">
+        <div class="col text-center">
+             <h2><span class="font-semi-bold">Log in</span></h2>
+        </div>
+    </div>
+{% endblock %}
+
+{% block content %}
+<div class="content row">
+    <div class="col-md-8">
+      {% if login_form %}
+         {{ login_form|safe }}
+      {% else %}
+          <form><input type="submit" value="login"></form>
+      {% endif %}
+      {% if appstruct %}
+      {{ appstruct }}
+      {% endif %}
+    </div>
+</div>
+{% endblock content %}
