@@ -14,12 +14,24 @@
     {% for hc, hc_url, cells in honeycombs %}
       <li>
         <a href="{{ hc_url }}">{{ hc.title }}</a>
+            <a href="{{ request.resource_url(hc, 'delete') }}"
+       class="btn btn-xs btn-danger"
+       onclick="return confirm('¿Estás seguro de que quieres borrar TODO el honeycomb \'{{ hc.title }}\'?');">
+       Borrar Honeycomb
+    </a>
+<a href="{{ request.resource_url(hc, 'CreateNew') }}" class="btn btn-success btn-sm">
+    + Añadir Celda
+</a>
         {% if cells %}
           <ul>
             {% for cell, cell_url in cells %}
               <li>
                 <a href="{{ cell_url }}">{{ cell.title }}</a> ({{ cell.__class__.__name__ }})
                 [<a href="{{ cell_url }}/edit">Editar</a>]
+                <a href="{{ request.resource_url(cell, 'delete') }}"
+               onclick="return confirm('¿Seguro?')" 
+               style="color: red; text-decoration: none;" 
+               title="Borrar">[x]</a>
               </li>
             {% endfor %}
           </ul>

@@ -3,13 +3,13 @@ from pyramid.httpexceptions import HTTPSeeOther, HTTPFound
 from pyramid_storage.exceptions import FileNotAllowed
 from pyramid_storage import extensions
 from pyramid import traversal
+import transaction
 
 from ..models import *
 
 
 @view_config(context=BeeHive, renderer='templates/beehive.jinja2')
 def beehive_view(context, request):
-    # La vista ahora está limpia y solo prepara los datos para la plantilla.
     honeycombs = []
     for name, hc in context.items():
         hc_url = request.resource_url(hc)
@@ -62,14 +62,11 @@ def textcell(request):
 
 @view_config(context=CellText, name='CreateNew', renderer='templates/view_cell_text.jinja2')
 def view_cell_text(context, request):
-    # Ejemplo de creación de un nuevo nodo
     if 'form.submitted' in request.params:
         title = request.params.get('title', '')
         contents = request.params.get('contents', '')
         nuevo_nodo = CellText(name=title, contents=contents, title=title)
-        # Agregar el nodo al Honeycomb actual
         request.context[nuevo_nodo.__name__] = nuevo_nodo
-        # Agregar el nodo al índice de BeeHive
         beehive = traversal.find_root(resource=request.context)
         beehive.add_node(nuevo_nodo)
         return HTTPFound(location=request.resource_url(nuevo_nodo))
@@ -85,7 +82,6 @@ def edit_cell_text(context, request):
     return {"cell": context}
 
 
-# Vistas Nuevas
 @view_config(context=CellRichText, renderer='honeycomb:templates/cell.jinja2')
 def richtextcell(request):
     title = getattr(request.context, 'title', "Wild cell")
@@ -165,12 +161,10 @@ def edit_cell_icon(context, request):
 
 @view_config(context=HoneycombGraph, renderer='templates/honeycombgraph.jinja2')
 def honeycomb_graph_view(context, request):
-    # Prepara la lista de nodos y sus URLs
     print("DEBUG - Nodos en grafo:", context.nodes)
     print("DEBUG - Aristas en grafo:", context.edges)
     nodes = [(node, request.resource_url(node)) for node in context.nodes]
 
-    # Prepara la lista de aristas (edges)
     edges = []
     for edge in context.edges:
         from_node = edge.from_node
@@ -187,4 +181,74 @@ def honeycomb_graph_view(context, request):
         "title": context.title,
         "nodes": nodes,
         "edges": edges
+    }
+
+@view_config(name='delete')
+def delete_view(context, request):
+    """
+    Vista genérica para borrar cualquier nodo (Honeycomb o Cell).
+    """
+    parent = context.__parent__
+    name = context.__name__
+    
+    del parent[name]
+    
+    return HTTPSeeOther(location=request.resource_url(parent))
+
+@view_config(context=Honeycomb, name='CreateNew', renderer='honeycomb:templates/universal_create.jinja2')
+def universal_create_view(context, request):
+    """
+    Vista universal para crear cualquier tipo de celda dentro de un Honeycomb.
+    Maneja tanto GET para mostrar el formulario como POST para procesarlo.
+    """
+    CELL_TYPES = {
+        'CellText': ('Celda de Texto Simple', CellText),
+        'CellRichText': ('Celda de Texto Enriquecido', CellRichText),
+        'CellAnimation': ('Celda de Animación (GIF)', CellAnimation),
+        'CellWebContent': ('Celda de Contenido Web (iframe)', CellWebContent),
+        'CellIcon': ('Celda de Icono', CellIcon),
+    }
+
+    parent = context
+
+    if request.method == 'POST':
+        item_type_key = request.params.get('item_type')
+        name = request.params.get('name')
+
+        if not item_type_key or item_type_key not in CELL_TYPES:
+            request.session.flash('Debes seleccionar un tipo de elemento válido.', 'error')
+            return HTTPSeeOther(location=request.resource_url(parent, 'CreateNew'))
+
+        if not name or name in parent:
+            request.session.flash('El nombre único es requerido y no debe existir.', 'error')
+            return HTTPSeeOther(location=request.resource_url(parent, 'CreateNew'))
+
+        _ , item_class = CELL_TYPES.get(item_type_key)
+        
+        params = {'name': name, 'title': request.params.get('title', '')}
+        
+        if item_class is CellText:
+            params['contents'] = request.params.get('contents', '')
+        elif item_class is CellRichText:
+            params['source'] = request.params.get('contents', '')
+        elif item_class is CellAnimation:
+            params['href'] = request.params.get('href', '')
+            params['icon'] = request.params.get('icon', '')
+        elif item_class is CellWebContent:
+            params['href'] = request.params.get('href', '')
+        elif item_class is CellIcon:
+            params['icon'] = request.params.get('icon', '')
+
+        new_item = item_class(**params)
+        parent[name] = new_item
+
+        final_item = parent[name] 
+        
+        transaction.commit()
+        
+        return HTTPFound(location=request.resource_url(final_item))
+
+    return {
+        "parent": parent,
+        "cell_types": CELL_TYPES
     }

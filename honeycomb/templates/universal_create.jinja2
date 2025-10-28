@@ -1,0 +1,77 @@
+{% extends "layout.jinja2" %}
+
+{% block content %}
+<h2>Añadir nueva celda en: {{ parent.title }}</h2>
+
+<form method="post"> 
+    
+    <div class="form-group">
+        <label for="item_type">1. Elige el tipo de celda:</label>
+        <select id="item_type" name="item_type" class="form-control" onchange="showFields()">
+            <option value="">-- Seleccionar --</option>
+            {% for key, (name, _) in cell_types.items() %}
+            <option value="{{ key }}">{{ name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div id="common_fields" style="display: none;">
+        <hr>
+        <h4>2. Completa los detalles:</h4>
+        <div class="form-group">
+            <label for="name">Nombre:</label>
+            <input type="text" id="name" name="name" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label for="title">Título:</label>
+            <input type="text" id="title" name="title" class="form-control" required>
+        </div>
+
+        <div id="field_contents" class="form-group specific-field" style="display: none;">
+            <label for="contents">Contenido (Texto o HTML):</label>
+            <textarea id="contents" name="contents" class="form-control" rows="5"></textarea>
+        </div>
+        <div id="field_href" class="form-group specific-field" style="display: none;">
+            <label for="href">URL / Enlace:</label>
+            <input type="text" id="href" name="href" class="form-control">
+        </div>
+        <div id="field_icon" class="form-group specific-field" style="display: none;">
+            <label for="icon">Icono (URL de la imagen):</label>
+            <input type="text" id="icon" name="icon" class="form-control">
+        </div>
+
+        <hr>
+        <button type="submit" name="form.submitted" value="1" class="btn btn-primary">Crear Celda</button>
+        <a href="{{ request.resource_url(parent) }}" class="btn btn-default">Cancelar</a>
+    </div>
+</form>
+
+<script>
+    function showFields() {
+        document.querySelectorAll('.specific-field').forEach(function(field) {
+            field.style.display = 'none';
+        });
+
+        const selectedType = document.getElementById('item_type').value;
+        const commonFields = document.getElementById('common_fields');
+
+        if (!selectedType) {
+            commonFields.style.display = 'none';
+            return;
+        }
+        
+        commonFields.style.display = 'block';
+
+        if (selectedType === 'CellText' || selectedType === 'CellRichText') {
+            document.getElementById('field_contents').style.display = 'block';
+        }
+        if (selectedType === 'CellAnimation' || selectedType === 'CellWebContent') {
+            document.getElementById('field_href').style.display = 'block';
+        }
+        if (selectedType === 'CellAnimation' || selectedType === 'CellIcon') {
+            document.getElementById('field_icon').style.display = 'block';
+        }
+    }
+    document.addEventListener("DOMContentLoaded", showFields);
+</script>
+{% endblock %}
