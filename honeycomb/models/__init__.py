@@ -150,7 +150,17 @@ def appmaker(zodb_root):
         abejas[mapa.__name__] = mapa
         app_root.add_node(mapa)
 
-        reproduccion = mapa['reproducción']
+        # reproduccion = mapa['node-24542b5b-ece1-45fa-975e-6c54744e1630']
+        # Buscar el nodo por id dentro de los valores de mapa
+        reproduccion = None
+        reproduccion_id = "node-24542b5b-ece1-45fa-975e-6c54744e1630"
+        for node in mapa.values():
+            # Buscar por atributo id o __name__
+            if getattr(node, "id", None) == reproduccion_id or getattr(node, "__name__", None) == reproduccion_id:
+                reproduccion = node
+                break
+        if reproduccion is None:
+            raise KeyError(f"No se encontró el nodo de reproducción con id {reproduccion_id}. Nodos disponibles: {[getattr(n, 'id', getattr(n, '__name__', None)) for n in mapa.values()]}")
 
         with open("honeycomb/static/assets/grafo_reproduccion.json") as f:
             grafo = HoneycombGraph.from_json(f.read(), name="ciclo-reproductivo", title="Ciclo reproductivo")

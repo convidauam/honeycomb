@@ -12,17 +12,28 @@ class SecurityPolicy:
 
     def load_identity(self, request):
         identity = self.authtkt.identify(request)
+        
         if identity is None:
             return None
 
         userid = identity['userid']
-        user = {
-            'userid': userid,
-            'displayname': 'Anonymous Bee',
-            'username': 'queen_bee',
-            'icon': '/static/bumblebee-16x16.png',
-            'background': '',
-        }
+        
+        if userid == 'convida@unam.social':
+            user = {
+                'userid': userid,
+                'displayname': 'Convida UNAM',
+                'username': 'convida',
+                'icon': '/static/convida-icon.png',
+                'background': '/static/convida-bg.png',
+            }
+        else:
+            user = {
+                'userid': userid,
+                'displayname': 'Anonymous Bee',
+                'username': 'queen_bee',
+                'icon': '/static/bumblebee-16x16.png',
+                'background': '',
+            }
         return user
 
     def identity(self, request):

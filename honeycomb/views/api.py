@@ -139,3 +139,58 @@ class NodeResource:
             data["edges"] = [edge for edge in edges]
             
         return data
+    
+@resource(path='/api/v1/drones/{userid}', cors_origins=('*',), factory='honeycomb.root_factory')
+class DroneResource:
+    def __init__(self, request, context=None):
+        self.request = request
+        self.context = context
+
+    def get(self):
+        user = getattr(self.request, 'identity', None)
+        if not user:
+            self.request.response.status = 401
+            return {'error': 'Unauthorized'}
+
+        return {
+            'userid': user.get('userid'),
+            'displayname': user.get('displayname'),
+            'username': user.get('username'),
+            'icon': user.get('icon'),
+            'background': user.get('background'),
+        }
+
+# Simulación de almacenamiento en memoria
+sipping_data_store = {}
+
+@resource(path='/api/v1/sipping/{nodeid}', cors_origins=('*',))
+class SippingResource:
+    def __init__(self, request, context=None):
+        self.request = request
+        self.context = context
+
+    def get(self):
+        nodeid = self.request.matchdict['nodeid']
+        user = getattr(self.request, 'identity', None)
+        userid = getattr(user, 'userid', getattr(user, 'id', 'anon'))
+        key = f"{userid}:{nodeid}"
+        data = sipping_data_store.get(key, {
+            'interacciones_previas': [],
+            'estadisticas': {},
+            'logros': []
+        })
+        return data
+
+    def post(self):
+        nodeid = self.request.matchdict['nodeid']
+        user = getattr(self.request, 'identity', None)
+        userid = getattr(user, 'userid', getattr(user, 'id', 'anon'))
+        key = f"{userid}:{nodeid}"
+        try:
+            payload = self.request.json_body
+        except Exception:
+            self.request.response.status = 400
+            return {'error': 'Invalid JSON'}
+        # Solo permite modificar datos de este nodo
+        sipping_data_store[key] = payload
+        return {'status': 'ok', 'saved': payload}
