@@ -148,10 +148,13 @@ class DroneResource:
 
     def get(self):
         user = getattr(self.request, 'identity', None)
+        url_userid = self.request.matchdict.get('userid')
         if not user:
             self.request.response.status = 401
             return {'error': 'Unauthorized'}
-
+        if url_userid != user.get('userid'):
+            self.request.response.status = 403
+            return {'error': 'Forbidden: userid mismatch'}
         return {
             'userid': user.get('userid'),
             'displayname': user.get('displayname'),
