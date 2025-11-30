@@ -162,8 +162,22 @@ class DroneResource:
             'icon': user.get('icon'),
             'background': user.get('background'),
         }
+    
+@resource(path='/api/v1/userid', cors_origins=('*',), factory='honeycomb.root_factory')
+class UserIDResource:
+    def __init__(self, request, context=None):
+        self.request = request
+        self.context = context
 
-# Simulación de almacenamiento en memoria
+    def get(self):
+        user = getattr(self.request, 'identity', None)
+        if not user:
+            self.request.response.status = 401
+            return {'error': 'Unauthorized'}
+        return {
+            'userid': user.get('userid'),
+        }
+
 sipping_data_store = {}
 
 @resource(path='/api/v1/sipping/{nodeid}', cors_origins=('*',))
