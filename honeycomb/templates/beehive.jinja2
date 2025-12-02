@@ -4,7 +4,7 @@
 <div class="content">
   <h1><span class="font-semi-bold">{{ project }}</span></h1>
   <p class="lead">
-      Welcome to the BeeHive{% if request.authenticated_userid %}: <span class="text-info">{{ request.identity["displayname"] }}</span>{% endif %}. You are currently visiting
+      Welcome to the BeeHive{% if request.authenticated_userid %}: <span class="text-info">{{ request.identity["display_name"] }}</span>{% endif %}. You are currently visiting
     <span class="font-normal">{{ title or "Demo Beehive" }}</span>.
     Please look at the contents which are here available.
   </p>

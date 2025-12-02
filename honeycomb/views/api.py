@@ -162,7 +162,7 @@ class DroneResource:
             'icon': user.get('icon'),
             'background': user.get('background'),
         }
-    
+# Simulación de almacenamiento en memoria
 sipping_data_store = {}
 
 @resource(path='/api/v1/sipping/{nodeid}', cors_origins=('*',))

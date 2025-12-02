@@ -1,13 +1,18 @@
 from .beehive import *
+from .axes import *
 
 def appmaker(zodb_root):
     if 'app_root' not in zodb_root:
         app_root = BeeHive()
         
+        builder = CellBuilder(default=1)
+        app_root.__builder__ = builder
+
         # --- Creación del Honeycomb por defecto ---
         hc = Honeycomb('demo', "Demo Convida")
         hc.__parent__ = app_root
         app_root['demo'] = hc
+        hc.__explorer__ = HoneycombExplorer(hc)
 
         cell1 = CellText('intro', "Welcome text", title="Introduction")
         cell1.__parent__ = hc
@@ -87,6 +92,7 @@ def appmaker(zodb_root):
         # --- Creación de juegos ---
         games_hc = Honeycomb('panal-de-juegos', "Panal de Juegos")
         games_hc.__parent__ = app_root
+        games_hc.__explorer__ = HoneycombExplorer(games_hc)
         app_root['panal-de-juegos'] = games_hc
 
         game_url = '/static/serpiente/index.html'
@@ -97,6 +103,8 @@ def appmaker(zodb_root):
         )
         game_cell.__parent__ = games_hc
         games_hc['juego-de-serpiente'] = game_cell
+
+        builder.fill_cell(game_cell)
 
         app_root.add_node(game_cell)
         app_root.add_edge(
@@ -124,6 +132,8 @@ def appmaker(zodb_root):
             )
             unity_game_cell.__parent__ = games_hc
             games_hc[unity_game_name] = unity_game_cell
+
+            builder.fill_cell(unity_game_cell)
 
             app_root.add_node(unity_game_cell)
             app_root.add_edge(
@@ -161,7 +171,9 @@ def appmaker(zodb_root):
         grafo._p_changed = True
 
         abejas.__parent__ = app_root
+        abejas.__explorer__ = HoneycombExplorer(abejas)
         app_root['abejas'] = abejas
+
 
 
         zodb_root['app_root'] = app_root
