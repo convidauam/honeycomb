@@ -159,22 +159,20 @@ def appmaker(zodb_root):
         mapa.__parent__ = abejas
         abejas[mapa.__name__] = mapa
         app_root.add_node(mapa)
-
-        reproduccion = mapa['reproducción']
-
-        with open("honeycomb/static/assets/grafo_reproduccion.json") as f:
-            grafo = HoneycombGraph.from_json(f.read(), name="ciclo-reproductivo", title="Ciclo reproductivo")
-
-        grafo.__parent__ = reproduccion
-        reproduccion[grafo.__name__] = grafo
-        app_root.add_node(grafo)
-        grafo._p_changed = True
+        if 'Reproducción' in mapa:
+            reproduccion = mapa['Reproducción']
+            with open("honeycomb/static/assets/grafo_reproduccion.json") as f:
+                grafo = HoneycombGraph.from_json(f.read(), name="ciclo-reproductivo", title="Ciclo reproductivo")
+            grafo.__parent__ = reproduccion
+            reproduccion[grafo.__name__] = grafo
+            app_root.add_node(grafo)
+            grafo._p_changed = True
+        else:
+            print("ADVERTENCIA: La clave 'Reproducción' no existe en el mapa cargado desde paisaje_tematico.json.")
 
         abejas.__parent__ = app_root
         abejas.__explorer__ = HoneycombExplorer(abejas)
         app_root['abejas'] = abejas
-
-
 
         zodb_root['app_root'] = app_root
         print("Nodos en índice:", list(app_root.__nodes__.keys()))

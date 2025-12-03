@@ -15,21 +15,31 @@ class SecurityPolicy:
         self.authtkt = AuthTktCookieHelper(secret)
         self.identity_cache = RequestLocalCache(self.load_identity)
 
+    def load_identity(self, request):
         identity = self.authtkt.identify(request)
+        
         if identity is None:
             return None
 
         userid = identity['userid']
-        if userid in USERS:
-            return USERS[userid]
-        # Fallback para usuarios no registrados
-        return {
-            'userid': userid,
-            'displayname': 'Anonymous Bee',
-            'username': 'queen_bee',
-            'icon': '/static/bumblebee-16x16.png',
-            'background': '',
-        }
+        
+        if userid == 'convida@unam.social':
+            user = {
+                'userid': userid,
+                'displayname': 'Convida UNAM',
+                'username': 'convida',
+                'icon': '/static/convida-icon.png',
+                'background': '/static/convida-bg.png',
+            }
+        else:
+            user = {
+                'userid': userid,
+                'displayname': 'Anonymous Bee',
+                'username': 'queen_bee',
+                'icon': '/static/bumblebee-16x16.png',
+                'background': '',
+            }
+        return user
 
     def identity(self, request):
         return self.identity_cache.get_or_create(request)
@@ -37,7 +47,7 @@ class SecurityPolicy:
     def authenticated_userid(self, request):
         user = self.identity(request)
         if user is not None:
-            return user.userid
+            return user['userid']
         return None
 
     def remember(self, request, userid, **kw):

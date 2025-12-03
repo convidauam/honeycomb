@@ -196,3 +196,18 @@ class SippingResource:
         # Solo permite modificar datos de este nodo
         sipping_data_store[key] = payload
         return {'status': 'ok', 'saved': payload}
+    
+@resource(path='/api/v1/userid', cors_origins=('*',), factory='honeycomb.root_factory')
+class UserIDResource:
+    def __init__(self, request, context=None):
+        self.request = request
+        self.context = context
+
+    def get(self):
+        user = getattr(self.request, 'identity', None)
+        if not user:
+            self.request.response.status = 401
+            return {'error': 'Unauthorized'}
+        return {
+            'userid': user.get('userid'),
+        }
