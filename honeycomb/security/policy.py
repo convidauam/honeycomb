@@ -7,7 +7,7 @@ from ..models.users import DroneUser
 
 
 USERS = {
-    'convida@unam.social': DroneUser('convida@unam.social', 'Convida UNAM', '/static/convida-icon.png', '/static/convida-bg.png'),
+    'convida@unam.social': DroneUser('convida@unam.social', 'Convida UNAM', 'convida@unam.social', '/static/convida-icon.png', '/static/convida-bg.png'),
 }
 
 class SecurityPolicy:

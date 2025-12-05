@@ -152,18 +152,32 @@ class DroneResource:
         if not user:
             self.request.response.status = 401
             return {'error': 'Unauthorized'}
-        if url_userid != user.get('userid'):
+        if url_userid != user.userid:
             self.request.response.status = 403
             return {'error': 'Forbidden: userid mismatch'}
         return {
-            'userid': user.get('userid'),
-            'displayname': user.get('displayname'),
-            'username': user.get('username'),
-            'icon': user.get('icon'),
-            'background': user.get('background'),
+            'userid': user.userid,
+            'displayname': user.display_name,
+            'username': user.username,
+            'icon': user.icon,
+            'background': user.background,
+        }
+    
+@resource(path='/api/v1/userid', cors_origins=('*',), factory='honeycomb.root_factory')
+class UserIDResource:
+    def __init__(self, request, context=None):
+        self.request = request
+        self.context = context
+
+    def get(self):
+        user = getattr(self.request, 'identity', None)
+        if not user:
+            self.request.response.status = 401
+            return {'error': 'Unauthorized'}
+        return {
+            'userid': getattr(user, 'userid'),
         }
 
-# Simulación de almacenamiento en memoria
 sipping_data_store = {}
 
 @resource(path='/api/v1/sipping/{nodeid}', cors_origins=('*',))
