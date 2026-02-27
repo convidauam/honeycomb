@@ -76,13 +76,6 @@ class BeeHive(PersistentMapping):
             ]
         }
 
-class ViewProxy(Persistent):
-    """Objeto proxy para permitir que Pyramid resuelva vistas con name="""
-    def __init__(self, parent, name):
-        self.__parent__ = parent
-        self.__name__ = name
-
-
 class Honeycomb(PersistentMapping):
     """A collection of interactive and non-interactive cells. It must have an associated map (either static or dynamic) which will be displayed when the honeycomb is opened."""
 
@@ -99,22 +92,6 @@ class Honeycomb(PersistentMapping):
 
     def get_map(self):
         return self.map
-    
-    def __getitem__(self, key):
-        # Permitir acceso a vistas CRUD como @@create_cell_text
-        if key.startswith('create_'):
-            # Retornar un proxy que permite que Pyramid resuelva el nombre
-            proxy = ViewProxy(self, key)
-            return proxy
-        # Sino, usar el comportamiento normal de PersistentMapping
-        return PersistentMapping.__getitem__(self, key)
-    
-    def __setitem__(self, key, value):
-        # Establecer el __parent__ automáticamente
-        if hasattr(value, '__parent__'):
-            value.__parent__ = self
-        # Usar el comportamiento normal de PersistentMapping
-        return PersistentMapping.__setitem__(self, key, value)
 
 class CellEdge(Persistent):
     def __init__(self, name, title, from_node, to_node, kind="default"):

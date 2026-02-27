@@ -7,12 +7,5 @@
 
   <h2><span class="font-normal">{{ title }}</span></h2>
 <p class="text-center font-bold">{{ contents }}</p>
-
-  <div class="crud-actions" style="margin-top: 2rem;">
-    <a href="{{ request.resource_url(cell) }}@@edit" class="btn btn-warning">Editar</a>
-    <form method="post" action="{{ request.resource_url(cell) }}@@delete" style="display:inline;">
-      <button type="submit" class="btn btn-danger" onclick="return confirm('¿Estás seguro de que quieres eliminar este contenido?');">Eliminar</button>
-    </form>
-  </div>
 </div>
 {% endblock content %}

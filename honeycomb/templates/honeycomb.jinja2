@@ -22,14 +22,5 @@
     <li><a href="{{ url }}">{{ cell.title }}</a></li>
 {% endfor %}
     </ul>
-
-  <h2><span class="font-normal">Crear nuevo contenido</span></h2>
-  <div class="crud-actions">
-    <a href="{{ request.resource_url(context, 'create_cell_text') }}" class="btn btn-primary">Crear Texto</a>
-    <a href="{{ request.resource_url(context, 'create_cell_richtext') }}" class="btn btn-primary">Crear Texto Enriquecido</a>
-    <a href="{{ request.resource_url(context, 'create_cell_animation') }}" class="btn btn-primary">Crear Animación</a>
-    <a href="{{ request.resource_url(context, 'create_cell_webcontent') }}" class="btn btn-primary">Crear Contenido Web</a>
-    <a href="{{ request.resource_url(context, 'create_cell_icon') }}" class="btn btn-primary">Crear Ícono</a>
-  </div>
 </div>
 {% endblock content %}
