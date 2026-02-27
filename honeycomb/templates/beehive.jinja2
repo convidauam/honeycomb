@@ -19,7 +19,7 @@
             {% for cell, cell_url in cells %}
               <li>
                 <a href="{{ cell_url }}">{{ cell.title }}</a> ({{ cell.__class__.__name__ }})
-                [<a href="{{ cell_url }}/edit">Editar</a>]
+                [<a href="{{ cell_url }}@@edit">Editar</a>]
               </li>
             {% endfor %}
           </ul>

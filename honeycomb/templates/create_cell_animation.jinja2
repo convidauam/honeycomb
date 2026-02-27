@@ -2,18 +2,17 @@
 
 {% block content %}
 <div class="content" style="max-width: 800px; margin: 2rem auto;">
-    <h2>Crear nuevo Contenido de Texto</h2>
+    <h2>Crear nuevo Contenido de Animación</h2>
     <form method="post" enctype="multipart/form-data" style="margin-top: 2rem;">
-        <input type="hidden" name="type" value="cell_text" />
-        
+        <input type="hidden" name="type" value="cell_animation" />
         <div class="form-group" style="margin-bottom: 1.5rem;">
             <label for="title" style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Título:</label>
             <input type="text" id="title" name="title" required style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;" />
         </div>
         
         <div class="form-group" style="margin-bottom: 1.5rem;">
-            <label for="contents" style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Contenido:</label>
-            <textarea id="contents" name="contents" required style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; height: 200px;"></textarea>
+            <label for="href" style="display: block; margin-bottom: 0.5rem; font-weight: bold;">URL de Animación:</label>
+            <input type="text" id="href" name="href" style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;" />
         </div>
         
         <div class="form-group" style="margin-bottom: 1.5rem;">
@@ -22,10 +21,9 @@
         </div>
         
         <div class="crud-actions" style="margin-top: 2rem;">
-            <button type="submit" class="btn btn-primary">Crear Contenido</button>
+            <button type="submit" class="btn btn-primary">Crear Animación</button>
             <a href="{{ request.resource_url(honeycomb) }}" class="btn btn-secondary">Cancelar</a>
         </div>
     </form>
 </div>
 {% endblock %}
-

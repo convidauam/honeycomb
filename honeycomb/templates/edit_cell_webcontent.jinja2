@@ -1,12 +1,27 @@
 {% extends "layout.jinja2" %}
 {% block content %}
-<h2>{{ 'Crear' if new else 'Editar' }} celda de contenido web</h2>
-<form method="post">
-  {% if new %}
-    <label>Nombre único:<br><input type="text" name="name"></label><br>
-  {% endif %}
-  <label>Título:<br><input type="text" name="title" value="{{ cell.title }}"></label><br>
-  <label>URL embebida (iframe):<br><input type="text" name="contents" value="{{ cell.href }}" size="80"></label><br>
-  <button type="submit" name="form.submitted">Guardar</button>
-</form>
+<div class="content" style="max-width: 800px; margin: 2rem auto;">
+    <h2>Editar Contenido Web</h2>
+    <form method="post" enctype="multipart/form-data" style="margin-top: 2rem;">
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label for="title" style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Título:</label>
+            <input type="text" id="title" name="title" value="{{ cell.title }}" required style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;" />
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label for="href" style="display: block; margin-bottom: 0.5rem; font-weight: bold;">URL Web:</label>
+            <input type="url" id="href" name="href" value="{{ cell.href or '' }}" required style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;" />
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label for="icon" style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Ícono (URL):</label>
+            <input type="text" id="icon" name="icon" value="{{ cell.icon or '' }}" style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;" />
+        </div>
+        
+        <div class="crud-actions" style="margin-top: 2rem;">
+            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+            <a href="{{ request.resource_url(cell) }}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
 {% endblock %}

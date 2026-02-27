@@ -1,20 +1,33 @@
 {% extends "layout.jinja2" %}
 {% block content %}
-<h2>Editar Animación: {{ cell.title }}</h2>
-
-<form method="POST">
-  <label>Título:<br>
-    <input type="text" name="title" value="{{ cell.title }}">
-  </label><br><br>
-
-  <label>URL de Animación (href):<br>
-    <input type="text" name="href" value="{{ cell.href }}">
-  </label><br><br>
-
-  <label>Icono:<br>
-    <input type="text" name="icon" value="{{ cell.icon }}">
-  </label><br><br>
-
-  <input type="submit" name="form.submitted" value="Guardar">
-</form>
+<div class="content" style="max-width: 800px; margin: 2rem auto;">
+    <h2>Editar Animación</h2>
+    <form method="post" enctype="multipart/form-data" style="margin-top: 2rem;">
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label for="title" style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Título:</label>
+            <input type="text" id="title" name="title" value="{{ cell.title }}" required style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;" />
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label for="href" style="display: block; margin-bottom: 0.5rem; font-weight: bold;">URL de Animación:</label>
+            <input type="text" id="href" name="href" value="{{ cell.href or '' }}" style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;" />
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label for="animation_file" style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Cargar archivo de animación:</label>
+            <input type="file" id="animation_file" name="animation_file" accept=".mp4,.webm,.gif,.json" style="width: 100%; padding: 0.5rem;" />
+            <small style="color: #666; display: block; margin-top: 0.5rem;">Formatos soportados: MP4, WebM, GIF, JSON</small>
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label for="icon" style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Ícono (URL):</label>
+            <input type="text" id="icon" name="icon" value="{{ cell.icon or '' }}" style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;" />
+        </div>
+        
+        <div class="crud-actions" style="margin-top: 2rem;">
+            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+            <a href="{{ request.resource_url(cell) }}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
 {% endblock %}

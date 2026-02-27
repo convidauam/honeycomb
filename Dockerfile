@@ -5,14 +5,11 @@ WORKDIR /app
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 
 RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=honeycomb/uv.lock,target=uv.lock \
-    --mount=type=bind,source=honeycomb/pyproject.toml,target=pyproject.toml \
-    uv sync --frozen --no-dev --no-install-workspace --package honeycomb
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --frozen --no-dev
 
-ADD honeycomb/ /app
-
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev --no-install-workspace --package honeycomb
+ADD . /app
 
 EXPOSE 6543
 
