@@ -3,6 +3,7 @@ import math
 from cornice.resource import resource
 from pyramid import traversal
 from ..models import *
+from ..models.beehive import CellWebContent
 import logging
 
 log = logging.getLogger(__name__)
@@ -211,3 +212,125 @@ class SippingResource:
         # Solo permite modificar datos de este nodo
         sipping_data_store[key] = payload
         return {'status': 'ok', 'saved': payload}
+
+
+
+#Archivos de Audio
+
+@resource(collection_path='/api/v1/admin/audios',
+          path='/api/v1/admin/audios/{node_id}',
+          cors_origins=('*',),
+          factory='honeycomb.root_factory')
+class AudioAdminResource:
+    """Administración para archivos de audio"""
+
+    def __init__(self, request, context=None):
+        self.request = request
+        self.request = context
+        root = transversal.find_root(resource=self.context)
+        if not hasattr(root, "__nodes__"):
+            root.__nodes__ = OOBTree()
+
+
+    def collection_post(self):
+
+        """CREATE - crear un audio"""
+        #Autenticacion
+        user = getattr(self.request, 'identity', None)
+        if not user:
+            self.request.response.status = 401
+            return {'error': 'Se requiere iniciar sesión'}
+
+        root = transversal.find_root(resource=self.context)
+
+        try :
+            data = self.request.json_body
+        except:
+            self.request.response.status = 400
+            return {'error': 'Se requiere JSON valido'}
+
+        #Crear objeto
+        nuevo_audio = CellWebContent(
+            name=data['nombre'],
+            url=data['url_audio'],
+            title=data['titulo'],
+            icon=data.get('icono')
+        )
+
+        nuevo_audio.id = str(uuid.uuid4())
+        root.__nodes__[str(nuevo_audio.id)] = nuevo_audio
+
+        self.request.response.status = 201
+        return {
+            'status': 'creado',
+            'id': str(nuevo_audio.id),
+            'mensaje': 'Audio creado'
+        }
+
+    def put(self):
+
+        """UPDATE - actualizar un audio existente"""
+        #Autenticacion
+        user = getattr(self.request, 'identity', None)
+        if not user:
+            self.request.response.status = 401
+            return {'error': 'Se requiere iniciar sesión'}
+
+        root = transversal.find_root(resource=self.context)
+        node_id = self.request.matchdict['node_id']
+
+        node = root.__nodes__.get(node_id)
+        if not node or not isinstance(node, CellWebContent):
+            self.request.response.status = 404
+            return {'error': 'Audio no encontrado'}
+
+        try:
+            data = self.request.json_body
+        except:
+            self.request.response.status = 400
+            return {'error': 'Se requiere JSON valido'}
+
+        
+        #Actualizacion de los campos
+        if 'titulo' in data:
+            node.title = data['titulo']
+        if 'url_audio' in data:
+            node.href = data['url.audio']
+        if 'icono' in data:
+            node.icon = data['icono']
+
+        return {
+            'status': 'actualizado',
+            'id': node_id,
+            'mensaje': 'Audio actualizado'
+        }
+
+
+    def delete(self):
+
+        """DELETE - eliminar un audio"""
+        #Autenticacion
+        user = getattr(self.request, 'identity', None)
+        if not user:
+            self.request.response.status = 401
+            return {'error': 'Se requiere iniciar sesión'}
+
+        root = transversal.find_root(resource=self.context)
+        node_id = self.request.matchdict['node_id']
+
+        node = root.__nodes__.get(node_id)
+        if not node or not isinstance(node, CellWebContent):
+            self.request.response.status = 404
+            return {'error': 'Audio no encontrado'}
+
+        del root.__nodes__[node_id]
+
+        return {
+            'status': 'eliminado',
+            'id': node_id,
+            'mensaje': 'Audio eliminado'
+        }
+    
+
+
+          
