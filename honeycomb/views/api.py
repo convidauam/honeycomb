@@ -226,8 +226,8 @@ class AudioAdminResource:
 
     def __init__(self, request, context=None):
         self.request = request
-        self.request = context
-        root = transversal.find_root(resource=self.context)
+        self.context = context
+        root = traversal.find_root(resource=self.context)
         if not hasattr(root, "__nodes__"):
             root.__nodes__ = OOBTree()
 
@@ -241,7 +241,7 @@ class AudioAdminResource:
             self.request.response.status = 401
             return {'error': 'Se requiere iniciar sesión'}
 
-        root = transversal.find_root(resource=self.context)
+        root = traversal.find_root(resource=self.context)
 
         try :
             data = self.request.json_body
@@ -283,7 +283,7 @@ class AudioAdminResource:
             self.request.response.status = 401
             return {'error': 'Se requiere iniciar sesión'}
 
-        root = transversal.find_root(resource=self.context)
+        root = traversal.find_root(resource=self.context)
         node_id = self.request.matchdict['node_id']
 
         node = root.__nodes__.get(node_id)
@@ -302,7 +302,7 @@ class AudioAdminResource:
         if 'titulo' in data:
             node.title = data['titulo']
         if 'url_audio' in data:
-            node.href = data['url.audio']
+            node.href = data['url_audio']
         if 'icono' in data:
             node.icon = data['icono']
 
@@ -322,7 +322,7 @@ class AudioAdminResource:
             self.request.response.status = 401
             return {'error': 'Se requiere iniciar sesión'}
 
-        root = transversal.find_root(resource=self.context)
+        root = traversal.find_root(resource=self.context)
         node_id = self.request.matchdict['node_id']
 
         node = root.__nodes__.get(node_id)
@@ -350,8 +350,8 @@ class ImagenesAdminResource:
 
     def __init__(self, request, context=None):
         self.request = request
-        self.request = context
-        root = transversal.find_root(resource=self.context)
+        self.context = context
+        root = traversal.find_root(resource=self.context)
         if not hasattr(root, "__nodes__"):
             root.__nodes__ = OOBTree()
 
@@ -365,7 +365,7 @@ class ImagenesAdminResource:
             self.request.response.status = 401
             return {'error': 'Se requiere iniciar sesión'}
 
-        root = transversal.find_root(resource=self.context)
+        root = traversal.find_root(resource=self.context)
 
         try :
             data = self.request.json_body
@@ -406,7 +406,7 @@ class ImagenesAdminResource:
             self.request.response.status = 401
             return {'error': 'Se requiere iniciar sesión'}
 
-        root = transversal.find_root(resource=self.context)
+        root = traversal.find_root(resource=self.context)
         node_id = self.request.matchdict['node_id']
 
         node = root.__nodes__.get(node_id)
@@ -443,7 +443,7 @@ class ImagenesAdminResource:
             self.request.response.status = 401
             return {'error': 'Se requiere iniciar sesión'}
 
-        root = transversal.find_root(resource=self.context)
+        root = traversal.find_root(resource=self.context)
         node_id = self.request.matchdict['node_id']
 
         node = root.__nodes__.get(node_id)
@@ -471,8 +471,8 @@ class VideoAdminResource:
 
     def __init__(self, request, context=None):
         self.request = request
-        self.request = context
-        root = transversal.find_root(resource=self.context)
+        self.context = context
+        root = traversal.find_root(resource=self.context)
         if not hasattr(root, "__nodes__"):
             root.__nodes__ = OOBTree()
 
@@ -486,7 +486,7 @@ class VideoAdminResource:
             self.request.response.status = 401
             return {'error': 'Se requiere iniciar sesión'}
 
-        root = transversal.find_root(resource=self.context)
+        root = traversal.find_root(resource=self.context)
 
         try :
             data = self.request.json_body
@@ -529,7 +529,7 @@ class VideoAdminResource:
             self.request.response.status = 401
             return {'error': 'Se requiere iniciar sesión'}
 
-        root = transversal.find_root(resource=self.context)
+        root = traversal.find_root(resource=self.context)
         node_id = self.request.matchdict['node_id']
 
         node = root.__nodes__.get(node_id)
@@ -568,7 +568,7 @@ class VideoAdminResource:
             self.request.response.status = 401
             return {'error': 'Se requiere iniciar sesión'}
 
-        root = transversal.find_root(resource=self.context)
+        root = traversal.find_root(resource=self.context)
         node_id = self.request.matchdict['node_id']
 
         node = root.__nodes__.get(node_id)
@@ -596,8 +596,8 @@ class AnimacionAdminResource:
 
     def __init__(self, request, context=None):
         self.request = request
-        self.request = context
-        root = transversal.find_root(resource=self.context)
+        self.context = context
+        root = traversal.find_root(resource=self.context)
         if not hasattr(root, "__nodes__"):
             root.__nodes__ = OOBTree()
 
@@ -611,7 +611,7 @@ class AnimacionAdminResource:
             self.request.response.status = 401
             return {'error': 'Se requiere iniciar sesión'}
 
-        root = transversal.find_root(resource=self.context)
+        root = traversal.find_root(resource=self.context)
 
         try :
             data = self.request.json_body
@@ -654,7 +654,7 @@ class AnimacionAdminResource:
             self.request.response.status = 401
             return {'error': 'Se requiere iniciar sesión'}
 
-        root = transversal.find_root(resource=self.context)
+        root = traversal.find_root(resource=self.context)
         node_id = self.request.matchdict['node_id']
 
         node = root.__nodes__.get(node_id)
@@ -693,7 +693,7 @@ class AnimacionAdminResource:
             self.request.response.status = 401
             return {'error': 'Se requiere iniciar sesión'}
 
-        root = transversal.find_root(resource=self.context)
+        root = traversal.find_root(resource=self.context)
         node_id = self.request.matchdict['node_id']
 
         node = root.__nodes__.get(node_id)
@@ -721,8 +721,8 @@ class TextoAdminResource:
 
     def __init__(self, request, context=None):
         self.request = request
-        self.request = context
-        root = transversal.find_root(resource=self.context)
+        self.context = context
+        root = traversal.find_root(resource=self.context)
         if not hasattr(root, "__nodes__"):
             root.__nodes__ = OOBTree()
 
@@ -736,7 +736,7 @@ class TextoAdminResource:
             self.request.response.status = 401
             return {'error': 'Se requiere iniciar sesión'}
 
-        root = transversal.find_root(resource=self.context)
+        root = traversal.find_root(resource=self.context)
 
         try :
             data = self.request.json_body
@@ -751,7 +751,7 @@ class TextoAdminResource:
         #Crear objeto
         nuevo_texto = CellText(
             name=data['nombre'],
-            contents=data.get('contenido', '')
+            contents=data.get('contenido', ''),
             title=data['titulo'],
             icon=data.get('icono')
         )
@@ -776,7 +776,7 @@ class TextoAdminResource:
             self.request.response.status = 401
             return {'error': 'Se requiere iniciar sesión'}
 
-        root = transversal.find_root(resource=self.context)
+        root = traversal.find_root(resource=self.context)
         node_id = self.request.matchdict['node_id']
 
         node = root.__nodes__.get(node_id)
@@ -795,7 +795,7 @@ class TextoAdminResource:
         if 'titulo' in data:
             node.title = data['titulo']
         if 'contenido' in data:
-            node.href = data['contenido']
+            node.contents = data['contenido']
         if 'icono' in data:
             node.icon = data['icono']
 
@@ -815,7 +815,7 @@ class TextoAdminResource:
             self.request.response.status = 401
             return {'error': 'Se requiere iniciar sesión'}
 
-        root = transversal.find_root(resource=self.context)
+        root = traversal.find_root(resource=self.context)
         node_id = self.request.matchdict['node_id']
 
         node = root.__nodes__.get(node_id)
