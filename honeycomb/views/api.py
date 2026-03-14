@@ -3,6 +3,7 @@ import math
 from cornice.resource import resource
 from pyramid import traversal
 from ..models import *
+from ..models.beehive import CellWebContent, CellIcon, CellAnimation, CellText
 import logging
 
 log = logging.getLogger(__name__)
@@ -211,3 +212,631 @@ class SippingResource:
         # Solo permite modificar datos de este nodo
         sipping_data_store[key] = payload
         return {'status': 'ok', 'saved': payload}
+
+
+
+#CRUD Audio
+
+@resource(collection_path='/api/v1/admin/audios',
+          path='/api/v1/admin/audios/{node_id}',
+          cors_origins=('*',),
+          factory='honeycomb.root_factory')
+class AudioAdminResource:
+    """Administración para audio"""
+
+    def __init__(self, request, context=None):
+        self.request = request
+        self.context = context
+        root = traversal.find_root(resource=self.context)
+        if not hasattr(root, "__nodes__"):
+            root.__nodes__ = OOBTree()
+
+
+    def collection_post(self):
+
+        """CREATE - agregar un audio"""
+        #Autenticacion
+        user = getattr(self.request, 'identity', None)
+        if not user:
+            self.request.response.status = 401
+            return {'error': 'Se requiere iniciar sesión'}
+
+        root = traversal.find_root(resource=self.context)
+
+        try :
+            data = self.request.json_body
+        except:
+            self.request.response.status = 400
+            return {'error': 'Se requiere JSON valido'}
+
+        #Validacion de campos
+        required = ['nombre', 'titulo', 'url_audio']
+        for campo in required:
+            if campo not in data:
+                self.request.response.status = 400
+                return {'error': f'El campo "{campo}" es requerido'}
+
+        #Crear objeto
+        nuevo_audio = CellWebContent(
+            name=data['nombre'],
+            url=data['url_audio'],
+            title=data['titulo'],
+            icon=data.get('icono')
+        )
+
+        nuevo_audio.id = str(uuid.uuid4())
+        root.__nodes__[str(nuevo_audio.id)] = nuevo_audio
+
+        self.request.response.status = 201
+        return {
+            'status': 'creado',
+            'id': str(nuevo_audio.id),
+            'mensaje': 'Audio creado'
+        }
+
+    def put(self):
+
+        """UPDATE - actualizar un audio existente"""
+        #Autenticacion
+        user = getattr(self.request, 'identity', None)
+        if not user:
+            self.request.response.status = 401
+            return {'error': 'Se requiere iniciar sesión'}
+
+        root = traversal.find_root(resource=self.context)
+        node_id = self.request.matchdict['node_id']
+
+        node = root.__nodes__.get(node_id)
+        if not node or not isinstance(node, CellWebContent):
+            self.request.response.status = 404
+            return {'error': 'Audio no encontrado'}
+
+        try:
+            data = self.request.json_body
+        except:
+            self.request.response.status = 400
+            return {'error': 'Se requiere JSON valido'}
+
+        
+        #Actualizacion de los campos
+        if 'titulo' in data:
+            node.title = data['titulo']
+        if 'url_audio' in data:
+            node.href = data['url_audio']
+        if 'icono' in data:
+            node.icon = data['icono']
+
+        return {
+            'status': 'actualizado',
+            'id': node_id,
+            'mensaje': 'Audio actualizado'
+        }
+
+
+    def delete(self):
+
+        """DELETE - eliminar un audio"""
+        #Autenticacion
+        user = getattr(self.request, 'identity', None)
+        if not user:
+            self.request.response.status = 401
+            return {'error': 'Se requiere iniciar sesión'}
+
+        root = traversal.find_root(resource=self.context)
+        node_id = self.request.matchdict['node_id']
+
+        node = root.__nodes__.get(node_id)
+        if not node or not isinstance(node, CellWebContent):
+            self.request.response.status = 404
+            return {'error': 'Audio no encontrado'}
+
+        del root.__nodes__[node_id]
+
+        return {
+            'status': 'eliminado',
+            'id': node_id,
+            'mensaje': 'Audio eliminado'
+        }
+
+
+#CRUD Imagenes
+
+@resource(collection_path='/api/v1/admin/imagenes',
+          path='/api/v1/admin/imagenes/{node_id}',
+          cors_origins=('*',),
+          factory='honeycomb.root_factory')
+class ImagenesAdminResource:
+    """Administración para imagenes"""
+
+    def __init__(self, request, context=None):
+        self.request = request
+        self.context = context
+        root = traversal.find_root(resource=self.context)
+        if not hasattr(root, "__nodes__"):
+            root.__nodes__ = OOBTree()
+
+
+    def collection_post(self):
+
+        """CREATE - agregar una imagen"""
+        #Autenticacion
+        user = getattr(self.request, 'identity', None)
+        if not user:
+            self.request.response.status = 401
+            return {'error': 'Se requiere iniciar sesión'}
+
+        root = traversal.find_root(resource=self.context)
+
+        try :
+            data = self.request.json_body
+        except:
+            self.request.response.status = 400
+            return {'error': 'Se requiere JSON valido'}
+
+        #Validacion de campos
+        if 'nombre' not in data:
+            return {'error': 'Debes agregar un "nombre"'}
+        if 'titulo' not in data:
+            return {'error': 'Debes agregar un "titulo"'}
+
+        #Crear objeto
+        nueva_imagen = CellIcon(
+            name=data['nombre'],
+            title=data['titulo'],
+            icon=data.get('icono')
+        )
+
+        nueva_imagen.id = str(uuid.uuid4())
+        root.__nodes__[str(nueva_imagen.id)] = nueva_imagen
+
+        self.request.response.status = 201
+        return {
+            'status': 'creado',
+            'id': str(nueva_imagen.id),
+            'tipo': 'imagen',
+            'mensaje': 'Imagen creada'
+        }
+
+    def put(self):
+
+        """UPDATE - actualizar una imagen """
+        #Autenticacion
+        user = getattr(self.request, 'identity', None)
+        if not user:
+            self.request.response.status = 401
+            return {'error': 'Se requiere iniciar sesión'}
+
+        root = traversal.find_root(resource=self.context)
+        node_id = self.request.matchdict['node_id']
+
+        node = root.__nodes__.get(node_id)
+        if not node or not isinstance(node, CellIcon):
+            self.request.response.status = 404
+            return {'error': 'Imagen no encontrada'}
+
+        try:
+            data = self.request.json_body
+        except:
+            self.request.response.status = 400
+            return {'error': 'Se requiere JSON valido'}
+
+        
+        #Actualizacion de los campos
+        if 'titulo' in data:
+            node.title = data['titulo']
+        if 'icono' in data:
+            node.icon = data['icono']
+
+        return {
+            'status': 'actualizado',
+            'id': node_id,
+            'mensaje': 'Imagen actualizada'
+        }
+
+
+    def delete(self):
+
+        """DELETE - eliminar un audio"""
+        #Autenticacion
+        user = getattr(self.request, 'identity', None)
+        if not user:
+            self.request.response.status = 401
+            return {'error': 'Se requiere iniciar sesión'}
+
+        root = traversal.find_root(resource=self.context)
+        node_id = self.request.matchdict['node_id']
+
+        node = root.__nodes__.get(node_id)
+        if not node or not isinstance(node, CellIcon):
+            self.request.response.status = 404
+            return {'error': 'Imagen no encontrada'}
+
+        del root.__nodes__[node_id]
+
+        return {
+            'status': 'eliminado',
+            'id': node_id,
+            'mensaje': 'Imagen eliminada'
+        }
+
+
+#CRUD Video
+
+@resource(collection_path='/api/v1/admin/videos',
+          path='/api/v1/admin/videos/{node_id}',
+          cors_origins=('*',),
+          factory='honeycomb.root_factory')
+class VideoAdminResource:
+    """Administración para video"""
+
+    def __init__(self, request, context=None):
+        self.request = request
+        self.context = context
+        root = traversal.find_root(resource=self.context)
+        if not hasattr(root, "__nodes__"):
+            root.__nodes__ = OOBTree()
+
+
+    def collection_post(self):
+
+        """CREATE - agregar un video"""
+        #Autenticacion
+        user = getattr(self.request, 'identity', None)
+        if not user:
+            self.request.response.status = 401
+            return {'error': 'Se requiere iniciar sesión'}
+
+        root = traversal.find_root(resource=self.context)
+
+        try :
+            data = self.request.json_body
+        except:
+            self.request.response.status = 400
+            return {'error': 'Se requiere JSON valido'}
+
+        #Validacion de campos
+        required = ['nombre', 'titulo', 'url_video']
+        for campo in required:
+            if campo not in data:
+                self.request.response.status = 400
+                return {'error': f'El campo "{campo}" es requerido'}
+
+        #Crear objeto
+        nuevo_video = CellWebContent(
+            name=data['nombre'],
+            url=data['url_video'],
+            title=data['titulo'],
+            icon=data.get('icono')
+        )
+
+        nuevo_video.id = str(uuid.uuid4())
+        root.__nodes__[str(nuevo_video.id)] = nuevo_video
+
+        self.request.response.status = 201
+        return {
+            'status': 'creado',
+            'id': str(nuevo_video.id),
+            'tipo': 'video',
+            'mensaje': 'Video creado'
+        }
+
+    def put(self):
+
+        """UPDATE - actualizar un video existente"""
+        #Autenticacion
+        user = getattr(self.request, 'identity', None)
+        if not user:
+            self.request.response.status = 401
+            return {'error': 'Se requiere iniciar sesión'}
+
+        root = traversal.find_root(resource=self.context)
+        node_id = self.request.matchdict['node_id']
+
+        node = root.__nodes__.get(node_id)
+        if not node or not isinstance(node, CellWebContent):
+            self.request.response.status = 404
+            return {'error': 'Video no encontrado'}
+
+        try:
+            data = self.request.json_body
+        except:
+            self.request.response.status = 400
+            return {'error': 'Se requiere JSON valido'}
+
+        
+        #Actualizacion de los campos
+        if 'titulo' in data:
+            node.title = data['titulo']
+        if 'url_video' in data:
+            node.href = data['url_video']
+        if 'icono' in data:
+            node.icon = data['icono']
+
+        return {
+            'status': 'actualizado',
+            'id': node_id,
+            'mensaje': 'Video actualizado'
+        }
+
+
+    def delete(self):
+
+        """DELETE - eliminar un video"""
+        #Autenticacion
+        user = getattr(self.request, 'identity', None)
+        if not user:
+            self.request.response.status = 401
+            return {'error': 'Se requiere iniciar sesión'}
+
+        root = traversal.find_root(resource=self.context)
+        node_id = self.request.matchdict['node_id']
+
+        node = root.__nodes__.get(node_id)
+        if not node or not isinstance(node, CellWebContent):
+            self.request.response.status = 404
+            return {'error': 'Video no encontrado'}
+
+        del root.__nodes__[node_id]
+
+        return {
+            'status': 'eliminado',
+            'id': node_id,
+            'mensaje': 'Video eliminado'
+        }
+
+
+#CRUD Animacion
+
+@resource(collection_path='/api/v1/admin/animaciones',
+          path='/api/v1/admin/animaciones/{node_id}',
+          cors_origins=('*',),
+          factory='honeycomb.root_factory')
+class AnimacionAdminResource:
+    """Administración para animaciones"""
+
+    def __init__(self, request, context=None):
+        self.request = request
+        self.context = context
+        root = traversal.find_root(resource=self.context)
+        if not hasattr(root, "__nodes__"):
+            root.__nodes__ = OOBTree()
+
+
+    def collection_post(self):
+
+        """CREATE - agregar una animacion"""
+        #Autenticacion
+        user = getattr(self.request, 'identity', None)
+        if not user:
+            self.request.response.status = 401
+            return {'error': 'Se requiere iniciar sesión'}
+
+        root = traversal.find_root(resource=self.context)
+
+        try :
+            data = self.request.json_body
+        except:
+            self.request.response.status = 400
+            return {'error': 'Se requiere JSON valido'}
+
+        #Validacion de campos
+        required = ['nombre', 'titulo', 'url_animacion']
+        for campo in required:
+            if campo not in data:
+                self.request.response.status = 400
+                return {'error': f'El campo "{campo}" es requerido'}
+
+        #Crear objeto
+        nueva_animacion = CellAnimation(
+            name=data['nombre'],
+            url=data['url_animacion'],
+            title=data['titulo'],
+            icon=data.get('icono')
+        )
+
+        nueva_animacion.id = str(uuid.uuid4())
+        root.__nodes__[str(nueva_animacion.id)] = nueva_animacion
+
+        self.request.response.status = 201
+        return {
+            'status': 'creado',
+            'id': str(nueva_animacion.id),
+            'tipo': 'animacion',
+            'mensaje': 'Animacion creada'
+        }
+
+    def put(self):
+
+        """UPDATE - actualizar una animacion existente"""
+        #Autenticacion
+        user = getattr(self.request, 'identity', None)
+        if not user:
+            self.request.response.status = 401
+            return {'error': 'Se requiere iniciar sesión'}
+
+        root = traversal.find_root(resource=self.context)
+        node_id = self.request.matchdict['node_id']
+
+        node = root.__nodes__.get(node_id)
+        if not node or not isinstance(node, CellAnimation):
+            self.request.response.status = 404
+            return {'error': 'Animacion no encontrado'}
+
+        try:
+            data = self.request.json_body
+        except:
+            self.request.response.status = 400
+            return {'error': 'Se requiere JSON valido'}
+
+        
+        #Actualizacion de los campos
+        if 'titulo' in data:
+            node.title = data['titulo']
+        if 'url_animacion' in data:
+            node.href = data['url_animacion']
+        if 'icono' in data:
+            node.icon = data['icono']
+
+        return {
+            'status': 'actualizado',
+            'id': node_id,
+            'mensaje': 'Animacion actualizada'
+        }
+
+
+    def delete(self):
+
+        """DELETE - eliminar una animacion"""
+        #Autenticacion
+        user = getattr(self.request, 'identity', None)
+        if not user:
+            self.request.response.status = 401
+            return {'error': 'Se requiere iniciar sesión'}
+
+        root = traversal.find_root(resource=self.context)
+        node_id = self.request.matchdict['node_id']
+
+        node = root.__nodes__.get(node_id)
+        if not node or not isinstance(node, CellAnimation):
+            self.request.response.status = 404
+            return {'error': 'Animacion no encontrada'}
+
+        del root.__nodes__[node_id]
+
+        return {
+            'status': 'eliminado',
+            'id': node_id,
+            'mensaje': 'Animacion eliminada'
+        }
+
+
+#CRUD Texto
+
+@resource(collection_path='/api/v1/admin/textos',
+          path='/api/v1/admin/textos/{node_id}',
+          cors_origins=('*',),
+          factory='honeycomb.root_factory')
+class TextoAdminResource:
+    """Administración para textos"""
+
+    def __init__(self, request, context=None):
+        self.request = request
+        self.context = context
+        root = traversal.find_root(resource=self.context)
+        if not hasattr(root, "__nodes__"):
+            root.__nodes__ = OOBTree()
+
+
+    def collection_post(self):
+
+        """CREATE - agregar un texto"""
+        #Autenticacion
+        user = getattr(self.request, 'identity', None)
+        if not user:
+            self.request.response.status = 401
+            return {'error': 'Se requiere iniciar sesión'}
+
+        root = traversal.find_root(resource=self.context)
+
+        try :
+            data = self.request.json_body
+        except:
+            self.request.response.status = 400
+            return {'error': 'Se requiere JSON valido'}
+
+        #Validacion de campos
+        if 'nombre' not in data or 'titulo' not in data:
+            return {'error': 'Falta nombre o titulo'}
+
+        #Crear objeto
+        nuevo_texto = CellText(
+            name=data['nombre'],
+            contents=data.get('contenido', ''),
+            title=data['titulo'],
+            icon=data.get('icono')
+        )
+
+        nuevo_texto.id = str(uuid.uuid4())
+        root.__nodes__[str(nuevo_texto.id)] = nuevo_texto
+
+        self.request.response.status = 201
+        return {
+            'status': 'creado',
+            'id': str(nuevo_texto.id),
+            'tipo': 'texto',
+            'mensaje': 'Texto creado'
+        }
+
+    def put(self):
+
+        """UPDATE - actualizar un texto existente"""
+        #Autenticacion
+        user = getattr(self.request, 'identity', None)
+        if not user:
+            self.request.response.status = 401
+            return {'error': 'Se requiere iniciar sesión'}
+
+        root = traversal.find_root(resource=self.context)
+        node_id = self.request.matchdict['node_id']
+
+        node = root.__nodes__.get(node_id)
+        if not node or not isinstance(node, CellText):
+            self.request.response.status = 404
+            return {'error': 'Texto no encontrado'}
+
+        try:
+            data = self.request.json_body
+        except:
+            self.request.response.status = 400
+            return {'error': 'Se requiere JSON valido'}
+
+        
+        #Actualizacion de los campos
+        if 'titulo' in data:
+            node.title = data['titulo']
+        if 'contenido' in data:
+            node.contents = data['contenido']
+        if 'icono' in data:
+            node.icon = data['icono']
+
+        return {
+            'status': 'actualizado',
+            'id': node_id,
+            'mensaje': 'Texto actualizado'
+        }
+
+
+    def delete(self):
+
+        """DELETE - eliminar una animacion"""
+        #Autenticacion
+        user = getattr(self.request, 'identity', None)
+        if not user:
+            self.request.response.status = 401
+            return {'error': 'Se requiere iniciar sesión'}
+
+        root = traversal.find_root(resource=self.context)
+        node_id = self.request.matchdict['node_id']
+
+        node = root.__nodes__.get(node_id)
+        if not node or not isinstance(node, CellText):
+            self.request.response.status = 404
+            return {'error': 'Texto no encontrado'}
+
+        del root.__nodes__[node_id]
+
+        return {
+            'status': 'eliminado',
+            'id': node_id,
+            'mensaje': 'Texto eliminado'
+        }
+
+
+
+
+
+
+    
+
+
+          
