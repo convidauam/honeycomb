@@ -351,6 +351,18 @@ class CellAnimation(CellLeaf):
         return self.icon
 
 
+class CellAudio(CellLeaf):
+    """Contains audio metadata and binary blob"""
+    def __init__(self, name, data, mime, length=0, title="", icon=None):
+        super().__init__(self)
+        self.__name__ = name
+        self.title = title
+        self.data = data
+        self.icon = icon
+        self.mime = mime
+        self.length = length
+
+
 class CellWebContent(CellLeaf):
     def __init__(self, name, url, title="", icon=None):
         super().__init__(self)
