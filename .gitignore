@@ -8,6 +8,7 @@
 *~
 .coverage
 coverage.xml
+blobs/
 build/
 dist/
 .tox/
