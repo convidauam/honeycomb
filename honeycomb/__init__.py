@@ -108,4 +108,9 @@ def main(global_config, **settings):
         config.set_root_factory(root_factory)
         config.scan()
     app = config.make_wsgi_app()
-    return ForwardedHeadersMiddleware(app)
+
+    use_proxy_headers = settings.get('honeycomb.use_proxy_headers', 'false').lower() == 'true'
+    if use_proxy_headers:
+        return ForwardedHeadersMiddleware(app)
+    
+    return app
