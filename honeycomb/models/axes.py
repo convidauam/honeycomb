@@ -1,3 +1,5 @@
+"""Defines data structures for node coordinates and implements helper classes to create, update and employ the honeycomb node distance matrix or individual node coordinates."""
+
 from collections import namedtuple
 from collections.abc import Sequence
 from persistent import Persistent
@@ -44,15 +46,15 @@ class HoneycombExplorer(Persistent):
         self.matrix = None
 
     def update_matrix(self):
+        "Iterates through the beehive nodes and recalculates distance matrix based on the axes values of nodes belonging to the chosen Honeycomb"
         root = traversal.find_root(self.__hc__)
         names = []
         coords = []
-        for item in root.__nodes__.items():
-            path = traversal.resource_path_tuple(item[1])
+        for node_id, node in root.__nodes__.items():
+            path = traversal.resource_path_tuple(node)
             if path and path[1] == self.__hc__.__name__:
-                if getattr(item[1], '__axes__', None):
-                    names.append(item[0])
-                    coords.append(item[1].__axes__)
-        print(coords)
+                if getattr(node, '__axes__', None):
+                    names.append(node)
+                    coords.append(node.__axes__)
         self.matrix = spatial.distance_matrix(np.array(coords), np.array(coords))
         self.names = names

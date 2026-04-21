@@ -51,6 +51,18 @@ def honeycomb_update(request):
             request.storage.delete(prev_filename)
     return HTTPSeeOther(request.resource_url(request.context))
 
+
+@view_config(context=Honeycomb, name='matrix', renderer='json')
+def honeycomb_matrix(request):
+    "This view returns a copy of the honeycomb distance matrix triggering its calculation if it isn't already available."
+    if hasattr(request.context, '__explorer__'):
+        matrix = request.context.__explorer__.matrix
+        if not matrix:
+            request.context.__explorer__.update_matrix()
+            matrix = request.context.__explorer__.matrix
+        return matrix.tolist()
+
+
 @view_config(context=CellText, renderer='honeycomb:templates/cell.jinja2')
 def textcell(request):
     if hasattr(request.context, 'title'):
@@ -58,6 +70,20 @@ def textcell(request):
     else:
         cell_title = "Wild cell"
     return {'project': 'Honeycomb', 'title': cell_title, 'contents': request.context.contents}
+
+
+@view_config(context=CellNode, renderer='templates/view_cell_node.jinja2')
+def view_cell_node(context, request):
+    children = []
+    for name, node in context.items():
+        node_url = request.resource_url(node)
+        children.append((node, node_url))
+    return {
+        'project': 'BeeHive Project',
+        'title': context.__name__,
+        'children': children,
+        'request': request,
+    }
 
 
 @view_config(context=CellText, name='CreateNew', renderer='templates/view_cell_text.jinja2')
