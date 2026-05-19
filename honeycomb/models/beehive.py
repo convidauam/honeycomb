@@ -87,12 +87,20 @@ class Honeycomb(PersistentMapping):
         self.icon = None
         self.map = None
 
+    def __setitem__(self, key, value):
+        """Asigna item y actualiza __parent__ y __name__"""
+        super().__setitem__(key, value)
+        if hasattr(value, '__parent__'):
+            value.__parent__ = self
+        if hasattr(value, '__name__'):
+            value.__name__ = key
+    
     def set_map(self, honeycombmap):
         self.map = honeycombmap
 
     def get_map(self):
         return self.map
-
+    
 class CellEdge(Persistent):
     def __init__(self, name, title, from_node, to_node, kind="default"):
         self.name = name
@@ -268,7 +276,7 @@ class HoneyDynamicMap(CellLeaf):
 class InteractiveCell(CellLeaf):
     """A BeeHive cell containing an interactive element"""
     def __init__(self, name, title=""):
-        super().__init__(self)
+        super().__init__(name=name, title=title)
         self.__name__ = name
         self.title = title
         self.icon = None
@@ -277,7 +285,7 @@ class InteractiveCell(CellLeaf):
 class StaticCell(CellLeaf):
     """A BeeHive cell containing static elements"""
     def __init__(self, name, title=""):
-        super().__init__(self)
+        super().__init__(name=name, title=title)
         self.__name__ = name
         self.title = title
         self.icon = None
@@ -286,7 +294,7 @@ class StaticCell(CellLeaf):
 class CellIcon(CellLeaf):
     """A BeeHive cell icon."""
     def __init__(self, name, title="", icon=None):
-        super().__init__(self)
+        super().__init__(name=name, title=title)
         self.__name__ = name
         self.title = title
         self.icon = icon
@@ -300,7 +308,7 @@ class CellIcon(CellLeaf):
 
 class CellText(CellLeaf):
     def __init__(self, name, contents, title="", icon=None):
-        super().__init__(self)
+        super().__init__(name=name, title=title)
         self.__name__ = name
         self.title = title
         self.contents = contents
@@ -323,7 +331,7 @@ class CellText(CellLeaf):
 
 class CellRichText(CellLeaf):
     def __init__(self, name, contents, title="", icon=None):
-        super().__init__(self)
+        super().__init__(name=name, title=title)
         self.__name__ = name
         self.title = title
         self.source = contents
@@ -338,7 +346,7 @@ class CellRichText(CellLeaf):
 
 class CellAnimation(CellLeaf):
     def __init__(self, name, url, title="", icon=None):
-        super().__init__(self)
+        super().__init__(name=name, title=title)
         self.__name__ = name
         self.href = url
         self.title = title
@@ -354,7 +362,7 @@ class CellAnimation(CellLeaf):
 class CellAudio(CellLeaf):
     """Contains audio metadata and binary blob"""
     def __init__(self, name, data, mime, length=0, title="", icon=None):
-        super().__init__(self)
+        super().__init__(name=name, title=title)
         self.__name__ = name
         self.title = title
         self.data = data
@@ -365,7 +373,7 @@ class CellAudio(CellLeaf):
 
 class CellWebContent(CellLeaf):
     def __init__(self, name, url, title="", icon=None):
-        super().__init__(self)
+        super().__init__(name=name, title=title)
         self.__name__ = name
         self.href = url
         self.title = title

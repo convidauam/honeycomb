@@ -3,7 +3,9 @@ from pyramid.httpexceptions import HTTPSeeOther, HTTPFound
 from pyramid_storage.exceptions import FileNotAllowed
 from pyramid_storage import extensions
 from pyramid import traversal
+import uuid
 from pyramid.response import FileIter
+from pyramid.httpexceptions import HTTPBadRequest
 
 from ..models import *
 
@@ -53,7 +55,6 @@ def honeycomb_update(request):
     return HTTPSeeOther(request.resource_url(request.context))
 
 
-# New (REST-ful and traversal-compatible) style views
 @view_config(context=Honeycomb, name='matrix', renderer='json')
 def honeycomb_matrix(request):
     "This view returns a copy of the honeycomb distance matrix triggering its calculation if it isn't already available."
@@ -65,27 +66,6 @@ def honeycomb_matrix(request):
         return matrix.tolist()
 
 
-@view_config(context=CellAudio, renderer='json', request_method="GET", xhr=True)
-def audio_metadata_view(request):
-    cell = request.context
-    if not cell.title:
-        title = cell.name.title()
-    else:
-        title = cell.title
-    return {'title': title, 'id': cell.id.hex, 'length': cell.length, 'mime-type': cell.mime, 'stream_url': request.resource_url(cell)+"stream"}
-
-
-@view_config(context=CellAudio, name="stream", renderer='json', request_method="GET")
-def audio_stream_view(request):
-    cell = request.context
-    response = request.response
-    response.content_type = cell.mime
-    response.app_iter = FileIter(cell.data.open("r"))
-
-    return response
-
-
-# Old style views (deprecated)
 @view_config(context=CellText, renderer='honeycomb:templates/cell.jinja2')
 def textcell(request):
     if hasattr(request.context, 'title'):
@@ -134,6 +114,7 @@ def edit_cell_text(context, request):
     return {"cell": context}
 
 
+# Vistas Nuevas
 @view_config(context=CellRichText, renderer='honeycomb:templates/cell.jinja2')
 def richtextcell(request):
     title = getattr(request.context, 'title', "Wild cell")
@@ -173,7 +154,6 @@ def edit_cell_animation(context, request):
         context.icon = request.params.get('icon', context.icon)
         return HTTPFound(location=request.resource_url(context))
     return {"cell": context}
-
 
 @view_config(context=CellWebContent, renderer='honeycomb:templates/view_cell_webcontent.jinja2')
 def webcell(context, request):
@@ -237,3 +217,166 @@ def honeycomb_graph_view(context, request):
         "nodes": nodes,
         "edges": edges
     }
+
+
+@view_config(context=CellAudio, renderer='json', request_method="GET", xhr=True)
+def audio_metadata_view(request):
+    """Obtener metadatos del audio"""
+    cell = request.context
+    if not cell.title:
+        title = cell.__name__.title() if cell.__name__ else "Audio"
+    else:
+        title = cell.title
+    return {
+        'title': title,
+        'id': cell.id.hex if hasattr(cell.id, 'hex') else str(cell.id),
+        'length': cell.length,
+        'mime-type': cell.mime,
+        'stream_url': request.resource_url(cell) + "stream"
+    }
+
+@view_config(context=CellAudio, name="stream", request_method="GET")
+def audio_stream_view(request):
+    """Reproducir audio"""
+    cell = request.context
+    response = request.response
+    response.content_type = cell.mime
+    response.app_iter = FileIter(cell.data.open("r"))
+    return response
+
+
+@view_config(context=CellIcon, renderer='json', request_method="GET", xhr=True)
+def image_metadata_view(request):
+    """Obtener metadatos de imagen"""
+    cell = request.context
+    return {
+        'id': str(cell.id),
+        'titulo': cell.title or cell.__name__,
+        'icono': cell.icon,
+        'tipo': 'imagen'
+    }
+
+
+@view_config(context=CellText, renderer='json', request_method="GET", xhr=True)
+def text_metadata_view(request):
+    """Obtener metadatos de texto"""
+    cell = request.context
+    return {
+        'id': str(cell.id),
+        'titulo': cell.title or cell.__name__,
+        'contenido': cell.contents,
+        'tipo': 'texto'
+    }
+
+
+@view_config(context=CellAnimation, renderer='json', request_method="GET", xhr=True)
+def animation_metadata_view(request):
+    """Obtener metadatos de animación"""
+    cell = request.context
+    return {
+        'id': str(cell.id),
+        'titulo': cell.title or cell.__name__,
+        'url': cell.href,
+        'tipo': 'animacion'
+    }
+
+
+@view_config(context=CellWebContent, renderer='json', request_method="GET", xhr=True)
+def webcontent_metadata_view(request):
+    """Obtener metadatos de contenido web"""
+    cell = request.context
+    return {
+        'id': str(cell.id),
+        'titulo': cell.title or cell.__name__,
+        'url': cell.href,
+        'tipo': 'webcontent'
+    }
+
+
+#Crear
+@view_config(context=Honeycomb, name='admin', permission='read', renderer='json', request_method='POST')
+def admin_create_node(context, request):
+    """Crear un nuevo nodo dentro de un honeycomb"""
+    data = request.json_body
+    tipo = data.get('tipo')
+    nombre = data.get('nombre')
+    titulo = data.get('titulo')
+    
+    if not tipo or not nombre:
+        return {'Faltan campos: tipo, nombre'}
+    
+    if tipo == 'audio':
+        nuevo = CellWebContent(nombre, data.get('url', ''), titulo)
+    elif tipo == 'video':
+        nuevo = CellWebContent(nombre, data.get('url', ''), titulo)
+    elif tipo == 'imagen':
+        nuevo = CellIcon(nombre, titulo, data.get('icono'))
+    elif tipo == 'animacion':
+        nuevo = CellAnimation(nombre, data.get('url', ''), titulo)
+    elif tipo == 'texto':
+        nuevo = CellText(nombre, data.get('contenido', ''), titulo)
+    else:
+        return {'Tipo "{tipo}" no válido'}
+    
+    context[nombre] = nuevo
+    
+    return {
+        'status': 'creado',
+        'id': str(nuevo.id),
+        'nombre': nombre,
+        'url': request.resource_url(nuevo)
+    }
+
+#Actualizar
+@view_config(context=CellWebContent, name='admin', permission='read', renderer='json', request_method='POST')
+def admin_update_webcontent(context, request):
+    """Actualizar audio o video"""
+    data = request.json_body
+    if 'titulo' in data:
+        context.title = data['titulo']
+    if 'url' in data:
+        context.href = data['url']
+    return {'status': 'actualizado', 'id': str(context.id)}
+
+@view_config(context=CellIcon, name='admin', permission='read', renderer='json', request_method='POST')
+def admin_update_icon(context, request):
+    """Actualizar imagen"""
+    data = request.json_body
+    if 'titulo' in data:
+        context.title = data['titulo']
+    if 'icono' in data:
+        context.icon = data['icono']
+    return {'status': 'actualizado', 'id': str(context.id)}
+
+@view_config(context=CellText, name='admin', permission='read', renderer='json', request_method='POST')
+def admin_update_text(context, request):
+    """Actualizar texto"""
+    data = request.json_body
+    if 'titulo' in data:
+        context.title = data['titulo']
+    if 'contenido' in data:
+        context.contents = data['contenido']
+    return {'status': 'actualizado', 'id': str(context.id)}
+
+@view_config(context=CellAnimation, name='admin', permission='read', renderer='json', request_method='POST')
+def admin_update_animation(context, request):
+    """Actualizar animación"""
+    data = request.json_body
+    if 'titulo' in data:
+        context.title = data['titulo']
+    if 'url' in data:
+        context.href = data['url']
+    return {'status': 'actualizado', 'id': str(context.id)}
+
+#Eliminar
+@view_config(context=CellLeaf, name='admin', permission='read', renderer='json', request_method='POST')
+def admin_delete_node(context, request):
+    """Eliminar cualquier tipo de nodo"""
+    parent = context.__parent__
+    name = context.__name__
+    
+    if parent and name in parent:
+        del parent[name]
+        return {'status': 'eliminado', 'id': str(context.id)}
+    
+    return {'No se pudo eliminar el nodo'}
