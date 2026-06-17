@@ -303,7 +303,7 @@ def admin_create_node(context, request):
     titulo = data.get('titulo')
     
     if not tipo or not nombre:
-        return {'Faltan campos: tipo, nombre'}
+        return {'error': 'Faltan campos obligatorios: tipo, nombre'}
     
     if tipo == 'audio':
         nuevo = CellWebContent(nombre, data.get('url', ''), titulo)
@@ -316,10 +316,16 @@ def admin_create_node(context, request):
     elif tipo == 'texto':
         nuevo = CellText(nombre, data.get('contenido', ''), titulo)
     else:
-        return {'Tipo "{tipo}" no válido'}
+        return {'error': f'Tipo "{tipo}" no válido'}
     
     context[nombre] = nuevo
     
+    # Guardar en BeeHive para evitar que un nodo quede huérfano
+    beehive = traversal.find_root(context)
+    if hasattr(beehive, 'add_node'):
+        beehive.add_node(nuevo)
+    
+    request.response.status_int = 201
     return {
         'status': 'creado',
         'id': str(nuevo.id),
@@ -328,7 +334,7 @@ def admin_create_node(context, request):
     }
 
 #Actualizar
-@view_config(context=CellWebContent, name='admin', permission='read', renderer='json', request_method='POST')
+@view_config(context=CellWebContent, name='admin', permission='read', renderer='json', request_method='PUT')
 def admin_update_webcontent(context, request):
     """Actualizar audio o video"""
     data = request.json_body
@@ -338,7 +344,7 @@ def admin_update_webcontent(context, request):
         context.href = data['url']
     return {'status': 'actualizado', 'id': str(context.id)}
 
-@view_config(context=CellIcon, name='admin', permission='read', renderer='json', request_method='POST')
+@view_config(context=CellIcon, name='admin', permission='read', renderer='json', request_method='PUT')
 def admin_update_icon(context, request):
     """Actualizar imagen"""
     data = request.json_body
@@ -348,7 +354,7 @@ def admin_update_icon(context, request):
         context.icon = data['icono']
     return {'status': 'actualizado', 'id': str(context.id)}
 
-@view_config(context=CellText, name='admin', permission='read', renderer='json', request_method='POST')
+@view_config(context=CellText, name='admin', permission='read', renderer='json', request_method='PUT')
 def admin_update_text(context, request):
     """Actualizar texto"""
     data = request.json_body
@@ -358,7 +364,7 @@ def admin_update_text(context, request):
         context.contents = data['contenido']
     return {'status': 'actualizado', 'id': str(context.id)}
 
-@view_config(context=CellAnimation, name='admin', permission='read', renderer='json', request_method='POST')
+@view_config(context=CellAnimation, name='admin', permission='read', renderer='json', request_method='PUT')
 def admin_update_animation(context, request):
     """Actualizar animación"""
     data = request.json_body
@@ -369,14 +375,20 @@ def admin_update_animation(context, request):
     return {'status': 'actualizado', 'id': str(context.id)}
 
 #Eliminar
-@view_config(context=CellLeaf, name='admin', permission='read', renderer='json', request_method='POST')
+@view_config(context=CellLeaf, name='admin', permission='read', renderer='json', request_method='DELETE')
 def admin_delete_node(context, request):
     """Eliminar cualquier tipo de nodo"""
     parent = context.__parent__
     name = context.__name__
     
     if parent and name in parent:
+        beehive = traversal.find_root(context)
+        if hasattr(beehive, 'remove_node'):
+            node_id = str(getattr(context, "id", "")) or name
+            beehive.remove_node(node_id)
+            
         del parent[name]
         return {'status': 'eliminado', 'id': str(context.id)}
     
-    return {'No se pudo eliminar el nodo'}
+    request.response.status_int = 404
+    return {'error': 'No se pudo eliminar el nodo o ya no existe'}
