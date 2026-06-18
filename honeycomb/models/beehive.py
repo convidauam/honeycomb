@@ -3,6 +3,7 @@ from persistent import Persistent
 from persistent.mapping import PersistentMapping
 from BTrees._OOBTree import OOBTree
 from persistent.list import PersistentList
+from slugify import slugify
 import json, uuid
 
 class BeeHive(PersistentMapping):
@@ -14,7 +15,7 @@ class BeeHive(PersistentMapping):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.id = str(uuid.uuid4())
+        self.id = uuid.uuid4()
         self.title = "BeeHive Root"
         self.__nodes__ = OOBTree()
         self.__edges__ = OOBTree()
@@ -81,7 +82,7 @@ class Honeycomb(PersistentMapping):
 
     def __init__(self, name, title=""):
         PersistentMapping.__init__(self)
-        self.id = str(uuid.uuid4())
+        self.id = uuid.uuid4()
         self.__name__ = name
         self.title = title
         self.icon = None
@@ -226,24 +227,34 @@ class CellLeaf(Persistent):
     """A terminal node in the honeycomb structure, it cannot have children nodes."""
     def __init__(self, name="", parent=None, title=""):
         super().__init__()
-        self.__name__ = name
+        # Cada nodo tiene un ID único y persistente
+        self.id = uuid.uuid4()
+        if name:
+            self.__name__ = name
+        elif title:
+            self.__name__ = slugify(title)
+        else:
+            self.__name__ = self.id.hex
         self.__parent__ = parent
         self.title = title
         self.icon = None
-        # Cada nodo tiene un ID único y persistente
-        self.id = uuid.uuid4()
 
 
 class CellNode(PersistentMapping):
     """A node in the honeycomb structure, it can contain children nodes or be alone, it can also be static or interactive."""
     def __init__(self, name="", parent=None, title=""):
         super().__init__()
-        self.__name__ = name
+        # Cada nodo tiene un ID único y persistente
+        self.id = uuid.uuid4()
+        if name:
+            self.__name__ = name
+        elif title:
+            self.__name__ = slugify(title)
+        else:
+            self.__name__ = self.id.hex
         self.__parent__ = parent
         self.title = title
         self.icon = None
-        # Cada nodo tiene un ID único y persistente
-        self.id = uuid.uuid4()
 
     def set_icon(self, icon):
         self.icon = icon
@@ -363,8 +374,6 @@ class CellAudio(CellLeaf):
     """Contains audio metadata and binary blob"""
     def __init__(self, name, data, mime, length=0, title="", icon=None):
         super().__init__(name=name, title=title)
-        self.__name__ = name
-        self.title = title
         self.data = data
         self.icon = icon
         self.mime = mime
