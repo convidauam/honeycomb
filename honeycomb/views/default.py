@@ -1,5 +1,5 @@
 from pyramid.view import view_config
-from pyramid.httpexceptions import HTTPSeeOther, HTTPFound
+from pyramid.httpexceptions import HTTPSeeOther, HTTPFound, HTTPBadRequest
 from pyramid_storage.exceptions import FileNotAllowed
 from pyramid_storage import extensions
 from pyramid import traversal
@@ -7,7 +7,11 @@ import uuid
 from pyramid.response import FileIter
 from pyramid.httpexceptions import HTTPBadRequest
 
+from ZODB.blob import Blob
+import os.path
+
 from ..models import *
+from ..forms import *
 
 
 @view_config(context=BeeHive, renderer='templates/beehive.jinja2')
@@ -64,6 +68,49 @@ def honeycomb_matrix(request):
             request.context.__explorer__.update_matrix()
             matrix = request.context.__explorer__.matrix
         return matrix.tolist()
+
+
+@view_config(context=Honeycomb, name="audio", renderer='json', request_method="POST", require_csrf=True)
+def audio_create_view(request):
+    schema = AudioCellSchema()
+    try:
+        fields = schema.deserialize(request.POST)
+    except colander.Invalid as err:
+        request.response.status = 400
+        return err.asdict()
+
+    filename = os.path.basename(request.POST['data'].filename)
+    source = request.POST['data'].file
+
+    parent_uuid = fields['parent']
+    title = fields['title']
+
+    # Improve this by adding both node and edge indexes to each Honeycomb instance
+    root = request.context.__parent__
+    parent = root.__nodes__.get(parent_uuid, None)
+    if parent:
+        path = traversal.resource_path_tuple(parent)
+
+        if not path or path[1] != request.self.context.__name__:
+            raise HTTPBadRequest("Parent ID does not belong to this Honeycomb")
+    else:
+        parent = request.context
+
+    audio = Blob()
+    length = 0
+    source.seek(0)
+
+    with audio.open('w') as target:
+        while True:
+            b = source.read(4096)
+            if b:
+                length += target.write(b)
+            else:
+                break
+
+    cell = CellAudio(name="", data=audio, title=fields['title'], mime=fields['mimetype'], length=length)
+    cell.__parent__ = parent
+    parent[cell.__name__] = cell
 
 
 @view_config(context=CellText, renderer='honeycomb:templates/cell.jinja2')
