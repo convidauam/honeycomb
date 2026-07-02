@@ -160,7 +160,20 @@ def appmaker(zodb_root):
         abejas[mapa.__name__] = mapa
         app_root.add_node(mapa)
 
-        reproduccion = mapa['reproducción']
+        reproduccion = None
+        # FIX: Se cambia el nodo de rescate de CellText a Honeycomb.
+        # Si la ZODB está limpia, el código anterior creaba un CellText, lo cual
+        # lanzaba un TypeError ('CellText' object does not support item assignment)
+        # al intentar guardar el grafo dentro de él. Honeycomb actúa como un contenedor válido.
+        for llave, nodo in mapa.items():
+            titulo = getattr(nodo, 'title', '') or getattr(nodo, 'label', '')
+            if titulo == 'Reproducción':
+                reproduccion = nodo
+                break
+        
+        if reproduccion is None:
+            reproduccion = Honeycomb("reproduccion_emergencia", "Reproducción")
+            mapa['reproduccion_emergencia'] = reproduccion
 
         with open("honeycomb/static/assets/grafo_reproduccion.json") as f:
             grafo = HoneycombGraph.from_json(f.read(), name="ciclo-reproductivo", title="Ciclo reproductivo")

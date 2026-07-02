@@ -79,11 +79,19 @@ def audio_create_view(request):
         request.response.status = 400
         return err.asdict()
 
-    filename = os.path.basename(request.POST['data'].filename)
     source = request.POST['data'].file
+
+    # max 100 mb
+    max_size = int(request.registry.settings.get('beehive_max_audio_size', 104857600))
+    source.seek(0, 2)
+    if source.tell() > max_size:
+        request.response.status = 400
+        return {'error': 'El archivo debe ser de maximo 100 mb'}
+    source.seek(0) 
 
     parent_uuid = fields['parent']
     title = fields['title']
+    duracion = fields.get('length', 0)
 
     # Improve this by adding both node and edge indexes to each Honeycomb instance
     root = request.context.__parent__
@@ -91,7 +99,7 @@ def audio_create_view(request):
     if parent:
         path = traversal.resource_path_tuple(parent)
 
-        if not path or path[1] != request.self.context.__name__:
+        if not path or path[1] != request.context.__name__:
             raise HTTPBadRequest("Parent ID does not belong to this Honeycomb")
     else:
         parent = request.context
@@ -104,13 +112,25 @@ def audio_create_view(request):
         while True:
             b = source.read(4096)
             if b:
-                length += target.write(b)
+                target.write(b)
             else:
                 break
 
-    cell = CellAudio(name="", data=audio, title=fields['title'], mime=fields['mimetype'], length=length)
+    cell = CellAudio(name="", data=audio, title=fields['title'], mime=fields['mimetype'], length=duracion)
     cell.__parent__ = parent
     parent[cell.__name__] = cell
+
+    beehive = traversal.find_root(request.context)
+    if hasattr(beehive, 'add_node'):
+        beehive.add_node(cell)
+
+    request.response.status_int = 201
+    return {
+        'status': 'creado',
+        'id': str(cell.id),
+        'title': cell.title,
+        'url': request.resource_url(cell)
+    }
 
 
 @view_config(context=CellText, renderer='honeycomb:templates/cell.jinja2')
@@ -439,3 +459,36 @@ def admin_delete_node(context, request):
     
     request.response.status_int = 404
     return {'error': 'No se pudo eliminar el nodo o ya no existe'}
+
+
+@view_config(context=CellAudio, renderer='json', request_method='GET')
+def view_audio_cell(context, request):
+    """
+    Devuelve los datos del audio.
+    """
+    url_reproduccion = request.resource_url(context, '@@play')
+
+    return {
+        'url': url_reproduccion,
+        # Buscamos 'length' primero, y si no está, probamos con 'lenght' por si acaso
+        'duracion': getattr(context, 'length', getattr(context, 'lenght', 0.0))
+    }
+
+@view_config(context=CellAudio, name='play', request_method='GET')
+def play_audio(context, request):
+    """
+    Esta vista saca el archivo Blob de la base de datos ZODB y lo transmite 
+    como un archivo de audio para que el navegador/frontend lo pueda escuchar.
+    """
+    # Obtenemos el archivo binario que guardamos en el POST
+    blob = context.data
+    
+    # Preparamos la respuesta para decirle al navegador que es un audio
+    response = request.response
+    response.content_type = getattr(context, 'mime', 'audio/mpeg')
+    
+    # Abrimos el blob en modo lectura ('r') y lo enviamos por partes (FileIter)
+    archivo_abierto = blob.open('r')
+    response.app_iter = FileIter(archivo_abierto)
+    
+    return response
