@@ -20,11 +20,18 @@ class BeeHive(PersistentMapping):
         self.__edges__ = OOBTree()
 
     # gestión de nodos y aristas
-    def add_node(self, node):
+    def add_node(self, node, recurse=False):
         node_id = str(getattr(node, "id", "")) or getattr(node, "__name__", None)
         self.__nodes__[node_id] = node
         self._add_node_edges(node)
-    
+        if recurse:
+            if hasattr(node, "nodes"):
+                for child in node.nodes:
+                    self.add_node(child)
+            elif isinstance(node, PersistentMapping):
+                for child in node.values():
+                    self.add_node(child)
+
     def _add_node_edges(self, node):
         """
         Agrega las conexiones (edges) del nodo al índice global __edges__.
