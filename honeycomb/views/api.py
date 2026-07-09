@@ -123,16 +123,36 @@ class NodeResource:
 
 
         if hasattr(node, "nodes") and hasattr(node, "edges"):
-            data["nodes"] = [{'id': str(child.id), 'label': getattr(child, 'title', ''), 'url': self.request.resource_url(child)} for child in node.nodes]
+            for child in node.nodes:
+                if hasattr(child, "__axes__"):
+                    position = dict(zip(('x', 'y', 'z'), child.__axes__))
+                else:
+                    position = dict(zip(('x', 'y'), (0,0)))
+
+                data["nodes"].append({
+                    'id': str(child.id),
+                    'data': {'label': getattr(child, 'title', '')},
+                    'label': getattr(child, 'title', ''),
+                    'url': self.request.resource_url(child),
+                    'position': position,
+                })
+            # data["nodes"] = [{'id': str(child.id), 'label': getattr(child, 'title', ''), 'url': self.request.resource_url(child)} for child in node.nodes]
             data["edges"] = [{'source': str(edge.from_node.id), 'target': str(edge.to_node.id), 'id': getattr(edge, 'id', uuid.uuid4().hex), 'label': edge.title, 'type': "custom-label", 'data': {'hasArrow': False}} for edge in node.edges]
 
         elif hasattr(node, "values"):
             for child in node.values():
+                if hasattr(child, "__axes__"):
+                    position = dict(zip(('x', 'y', 'z'), child.__axes__))
+                else:
+                    position = dict(zip(('x', 'y'), (0,0)))
+
                 data["nodes"].append({
                     "id": str(child.id),
+                    "data": {"label": getattr(child, "title", "")},
                     "label": getattr(child, "title", ""),
                     "url": self.request.resource_url(child),
                     "iconUrl": getattr(child, "icon", None),
+                    "position": position,
                 })
 
             edges = root.__edges__.get(node_id, [])

@@ -3,6 +3,7 @@ from persistent import Persistent
 from persistent.mapping import PersistentMapping
 from BTrees._OOBTree import OOBTree
 from persistent.list import PersistentList
+from .axes import CellBuilder
 import json, uuid
 
 class BeeHive(PersistentMapping):
@@ -222,6 +223,7 @@ class HoneycombGraph(PersistentMapping):
         nodes_map = {}
 
         graph = cls(name, title)
+        builder = CellBuilder()
 
         # 1. Crear todos los objetos de nodo
         for node_data in graph_data['nodes']:
@@ -241,6 +243,10 @@ class HoneycombGraph(PersistentMapping):
                 )
             node_obj.id = json_id
             node_obj.__parent__ = graph
+
+            node_coordinates = node_data.get("coordinates", None)
+            if node_coordinates:
+                builder.fill_cell(node_obj, **node_coordinates)
 
             # Añadir al grafo principal y al mapa temporal
             graph.add_node(node_obj)
