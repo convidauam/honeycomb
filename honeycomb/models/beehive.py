@@ -6,6 +6,63 @@ from persistent.list import PersistentList
 import json, uuid
 
 class BeeHive(PersistentMapping):
+    """A container of Honeycombs. This represents the top-level hierarchy which gives entry to honeycombs. It should
+    display the user a mosaic view of available honeycombs, highlighting already completed and recently visited ones,
+    as well as those featured by creators and managers."""
+    __name__ = None
+    __parent__ = None
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.id = str(uuid.uuid4())
+        self.title = "BeeHive Root"
+        self.__nodes__ = OOBTree()
+        self.__edges__ = OOBTree()
+
+    # gestión de nodos y aristas
+    def add_node(self, node):
+        node_id = str(getattr(node, "id", "")) or getattr(node, "__name__", None)
+        self.__nodes__[node_id] = node
+        self._add_node_edges(node)
+    
+    def _add_node_edges(self, node):
+        """
+        Agrega las conexiones (edges) del nodo al índice global __edges__.
+        Si el nodo es un grafo o contenedor, agrega recursivamente las conexiones de sus hijos.
+        """
+        node_id = str(getattr(node, "id", "")) or getattr(node, "__name__", None)
+        # Si el nodo tiene 'edges' (como HoneycombGraph), agrégalas al índice global
+        if hasattr(node, "edges") and isinstance(node.edges, (list, PersistentList)):
+            if node_id not in self.__edges__:
+                self.__edges__[node_id] = PersistentList()
+            for edge in node.edges:
+                self.__edges__[node_id].append(edge)
+        # Si el nodo tiene hijos (por ejemplo, en HoneycombGraph o CellNode), agrega recursivamente
+        if hasattr(node, "nodes") and isinstance(node.nodes, (list, PersistentList)):
+            for child in node.nodes:
+                self._add_node_edges(child)
+        if isinstance(node, PersistentMapping):
+            for child in node.values():
+                self._add_node_edges(child)
+
+    def get_node_by_name(self, name):
+        """Obtiene el nodo por su nombre único (__name__)."""
+        return self.__nodes__.get(name)
+
+    def remove_node(self, node_id):
+        if node_id in self.__nodes__:
+            del self.__nodes__[node_id]
+        if node_id in self.__edges__:
+            del self.__edges__[node_id]
+
+    def add_edge(self, source_id, edge):
+        if source_id not in self.__edges__:
+            self.__edges__[source_id] = PersistentList()
+        # Solo asigna __parent__ si el edge es un objeto con ese atributo
+        if hasattr(edge, "__parent__"):
+            edge.__parent__ = self
+        self.__edges__[source_id].append(edge)
+
     def remove_node_recursively(self, node_id):
         """
         Elimina el nodo, todos sus hijos y todas las conexiones asociadas (edges) del índice global.
@@ -18,7 +75,7 @@ class BeeHive(PersistentMapping):
         ids_to_remove = set()
 
         def collect_ids(n):
-            nid = getattr(n, "__name__", None) or str(getattr(n, "id", ""))
+            nid = str(getattr(n, "id", "")) or getattr(n, "__name__", None)
             ids_to_remove.add(nid)
 
             # Si el nodo tiene hijos (por ejemplo, en un grafo o contenedor), recorre recursivamente
@@ -54,7 +111,7 @@ class BeeHive(PersistentMapping):
         Sincroniza las conexiones (edges) de un HoneycombGraph con el índice global __edges__.
         Elimina las aristas previas del grafo en __edges__ y agrega las actuales.
         """
-        node_id = getattr(graph_node, "__name__", None) or str(getattr(graph_node, "id", ""))
+        node_id = str(getattr(graph_node, "id", "")) or getattr(graph_node, "__name__", None)
         # Elimina las aristas previas del grafo en el índice global
         if node_id in self.__edges__:
             del self.__edges__[node_id]
@@ -63,63 +120,6 @@ class BeeHive(PersistentMapping):
             self.__edges__[node_id] = PersistentList()
             for edge in graph_node.edges:
                 self.__edges__[node_id].append(edge)
-                    
-    """A container of Honeycombs. This represents the top-level hierarchy which gives entry to honeycombs. It should
-    display the user a mosaic view of available honeycombs, highlighting already completed and recently visited ones,
-    as well as those featured by creators and managers."""
-    __name__ = None
-    __parent__ = None
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.id = str(uuid.uuid4())
-        self.title = "BeeHive Root"
-        self.__nodes__ = OOBTree()
-        self.__edges__ = OOBTree()
-
-    # gestión de nodos y aristas
-    def add_node(self, node):
-        node_id = getattr(node, "__name__", None) or str(getattr(node, "id", ""))
-        self.__nodes__[node_id] = node
-        self._add_node_edges(node)
-    
-    def _add_node_edges(self, node):
-        """
-        Agrega las conexiones (edges) del nodo al índice global __edges__.
-        Si el nodo es un grafo o contenedor, agrega recursivamente las conexiones de sus hijos.
-        """
-        node_id = getattr(node, "__name__", None) or str(getattr(node, "id", ""))
-        # Si el nodo tiene 'edges' (como HoneycombGraph), agrégalas al índice global
-        if hasattr(node, "edges") and isinstance(node.edges, (list, PersistentList)):
-            if node_id not in self.__edges__:
-                self.__edges__[node_id] = PersistentList()
-            for edge in node.edges:
-                self.__edges__[node_id].append(edge)
-        # Si el nodo tiene hijos (por ejemplo, en HoneycombGraph o CellNode), agrega recursivamente
-        if hasattr(node, "nodes") and isinstance(node.nodes, (list, PersistentList)):
-            for child in node.nodes:
-                self._add_node_edges(child)
-        if isinstance(node, PersistentMapping):
-            for child in node.values():
-                self._add_node_edges(child)
-
-    def get_node_by_name(self, name):
-        """Obtiene el nodo por su nombre único (__name__)."""
-        return self.__nodes__.get(name)
-
-    def remove_node(self, node_id):
-        if node_id in self.__nodes__:
-            del self.__nodes__[node_id]
-        if node_id in self.__edges__:
-            del self.__edges__[node_id]
-
-    def add_edge(self, source_id, edge):
-        if source_id not in self.__edges__:
-            self.__edges__[source_id] = PersistentList()
-        # Solo asigna __parent__ si el edge es un objeto con ese atributo
-        if hasattr(edge, "__parent__"):
-            edge.__parent__ = self
-        self.__edges__[source_id].append(edge)
 
     def set_name(self, name, title=""):
         self.__name__ = name
