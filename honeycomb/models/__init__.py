@@ -153,7 +153,7 @@ def appmaker(zodb_root):
 
         abejas = Honeycomb('abejas', "Convida Abejas")
 
-        with open("honeycomb/static/assets/paisaje_tematico.json") as f:
+        with open("honeycomb/static/assets/paisaje_tematico_coords.json") as f:
             mapa = HoneycombGraph.from_json(f.read(), name="mapa-sitio", title="Paisaje temático")
 
         mapa.__parent__ = abejas
