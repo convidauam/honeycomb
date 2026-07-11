@@ -174,6 +174,15 @@ def appmaker(zodb_root):
         abejas.__explorer__ = HoneycombExplorer(abejas)
         app_root['abejas'] = abejas
 
+        abejopolis = CellWebContent('abejopolis', title="Abejópolis", url="https://convida.cua.uam.mx/abejopolis/")
+        libado = CellWebContent('libado', title="Libado", url="https://convida.cua.uam.mx/libado/")
+        abejopolis.__parent__ = abejas
+        abejas['abejopolis'] = abejopolis
+        libado.__parent__ = abejas
+        abejas['libado'] = libado
+        app_root.add_node(abejopolis)
+        app_root.add_node(libado)
+
 
 
         zodb_root['app_root'] = app_root

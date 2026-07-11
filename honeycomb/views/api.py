@@ -119,8 +119,20 @@ class NodeResource:
             "iconUrl": getattr(node, "icon", None),
             "nodes": [],
             "edges": [],
+            "type": None,
+            "href": None,
+            "src": None,
         }
 
+        if isinstance(node, CellNode):
+            data["type"] = "node"
+        elif isinstance(node, CellLeaf):
+            data["type"] = "leaf"
+            if isinstance(node, CellWebContent):
+                data["type"] = "webcontent"
+                data["href"] = node.href
+        else:
+            data["type"] = "custom"
 
         if hasattr(node, "nodes") and hasattr(node, "edges"):
             for child in node.nodes:
