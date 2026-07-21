@@ -4,7 +4,61 @@ from persistent.mapping import PersistentMapping
 from BTrees._OOBTree import OOBTree
 from persistent.list import PersistentList
 from .axes import CellBuilder
+import datetime
 import json, uuid
+
+
+def _utcnow_iso():
+    """Marca de tiempo UTC en formato ISO-8601 (serializable a JSON)."""
+    return datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+
+class GameData(Persistent):
+    """Datos persistentes de un videojuego para un usuario y un nodo.
+
+    interactions y badges: solo lectura para el juego (los controla el servidor).
+    stats y preferences: lectura/escritura.
+    """
+
+    def __init__(self, userid, nodeid):
+        self.userid = userid
+        self.nodeid = nodeid
+        self.interactions = 0
+        self.stats = PersistentMapping()
+        self.preferences = PersistentMapping()
+        self.badges = PersistentList()
+        now = _utcnow_iso()
+        self.first_seen = now
+        self.last_seen = now
+
+    def register_interaction(self):
+        """Suma una interacción (uso exclusivo del servidor) y refresca ``last_seen``."""
+        self.interactions += 1
+        self.last_seen = _utcnow_iso()
+
+    def merge_stats(self, stats, replace=False):
+        if replace:
+            self.stats.clear()
+        for key, value in stats.items():
+            self.stats[key] = value
+
+    def merge_preferences(self, preferences, replace=False):
+        if replace:
+            self.preferences.clear()
+        for key, value in preferences.items():
+            self.preferences[key] = value
+
+    def to_dict(self):
+        return {
+            "userid": self.userid,
+            "nodeid": self.nodeid,
+            "interactions": self.interactions,
+            "stats": dict(self.stats),
+            "preferences": dict(self.preferences),
+            "badges": list(self.badges),
+            "first_seen": self.first_seen,
+            "last_seen": self.last_seen,
+        }
 
 class BeeHive(PersistentMapping):
     """A container of Honeycombs. This represents the top-level hierarchy which gives entry to honeycombs. It should
@@ -19,6 +73,25 @@ class BeeHive(PersistentMapping):
         self.title = "BeeHive Root"
         self.__nodes__ = OOBTree()
         self.__edges__ = OOBTree()
+        self.__game_data__ = OOBTree()
+
+    # datos de videojuegos (GameData): acceso homologado por usuario + nodo
+    def get_game_data(self, userid, nodeid, create=False):
+        """Obtiene el GameData de (userid, nodeid). Si no existe y create=True, lo crea."""
+        if not hasattr(self, "__game_data__"):
+            # BeeHive persistido antes de añadir este atributo.
+            self.__game_data__ = OOBTree()
+        user_bucket = self.__game_data__.get(userid)
+        if user_bucket is None:
+            if not create:
+                return None
+            user_bucket = OOBTree()
+            self.__game_data__[userid] = user_bucket
+        record = user_bucket.get(nodeid)
+        if record is None and create:
+            record = GameData(userid, nodeid)
+            user_bucket[nodeid] = record
+        return record
 
     # gestión de nodos y aristas
     def add_node(self, node, recurse=False):

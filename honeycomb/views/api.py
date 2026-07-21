@@ -229,36 +229,90 @@ class UserIDResource:
             'userid': getattr(user, 'userid'),
         }
 
-sipping_data_store = {}
 
-@resource(path='/api/v1/sipping/{nodeid}', cors_origins=('*',))
-class SippingResource:
+@resource(path='/api/v1/me', cors_origins=('*',), factory='honeycomb.root_factory')
+class MeResource:
+    """Datos de solo lectura del usuario autenticado. Contrato homologado (a)."""
+
     def __init__(self, request, context=None):
         self.request = request
         self.context = context
 
     def get(self):
-        nodeid = self.request.matchdict['nodeid']
         user = getattr(self.request, 'identity', None)
-        userid = getattr(user, 'userid', getattr(user, 'id', 'anon'))
-        key = f"{userid}:{nodeid}"
-        data = sipping_data_store.get(key, {
-            'interacciones_previas': [],
-            'estadisticas': {},
-            'logros': []
-        })
-        return data
+        if not user:
+            self.request.response.status = 401
+            return {'error': 'Unauthorized'}
+        return {
+            'userid': user.userid,
+            'displayname': user.display_name,
+            'username': user.username,
+            'icon': user.icon,
+            'background': user.background,
+        }
+
+
+MAX_GAME_PAYLOAD_KEYS = 100
+
+
+def _validate_game_payload(mapping, field_name):
+    if not isinstance(mapping, dict):
+        return f"'{field_name}' must be an object"
+    if len(mapping) > MAX_GAME_PAYLOAD_KEYS:
+        return f"'{field_name}' has too many keys (max {MAX_GAME_PAYLOAD_KEYS})"
+    return None
+
+
+@resource(path='/api/v1/games/{nodeid}/data', cors_origins=('*',), factory='honeycomb.root_factory', require_csrf=False)
+class GameDataResource:
+    """Datos homologados de un videojuego para el usuario autenticado y un nodo (b)."""
+
+    def __init__(self, request, context=None):
+        self.request = request
+        self.context = context
+
+    def get(self):
+        user = getattr(self.request, 'identity', None)
+        if not user:
+            self.request.response.status = 401
+            return {'error': 'Unauthorized'}
+
+        nodeid = self.request.matchdict['nodeid']
+        root = traversal.find_root(resource=self.context)
+        record = root.get_game_data(user.userid, nodeid, create=False)
+        if record is None:
+            return GameData(user.userid, nodeid).to_dict()
+        return record.to_dict()
 
     def post(self):
-        nodeid = self.request.matchdict['nodeid']
         user = getattr(self.request, 'identity', None)
-        userid = getattr(user, 'userid', getattr(user, 'id', 'anon'))
-        key = f"{userid}:{nodeid}"
+        if not user:
+            self.request.response.status = 401
+            return {'error': 'Unauthorized'}
+
+        nodeid = self.request.matchdict['nodeid']
         try:
             payload = self.request.json_body
         except Exception:
             self.request.response.status = 400
             return {'error': 'Invalid JSON'}
-        # Solo permite modificar datos de este nodo
-        sipping_data_store[key] = payload
-        return {'status': 'ok', 'saved': payload}
+        if not isinstance(payload, dict):
+            self.request.response.status = 400
+            return {'error': "Request body must be a JSON object"}
+
+        stats = payload.get('stats', {})
+        preferences = payload.get('preferences', {})
+        replace = bool(payload.get('replace', False))
+
+        error = _validate_game_payload(stats, 'stats') or _validate_game_payload(preferences, 'preferences')
+        if error:
+            self.request.response.status = 400
+            return {'error': error}
+
+        root = traversal.find_root(resource=self.context)
+        record = root.get_game_data(user.userid, nodeid, create=True)
+        # interactions y badges no se aceptan del cliente: los controla el servidor
+        record.merge_stats(stats, replace=replace)
+        record.merge_preferences(preferences, replace=replace)
+        record.register_interaction()
+        return record.to_dict()
