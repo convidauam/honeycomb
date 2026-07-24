@@ -168,20 +168,25 @@ def appmaker(zodb_root):
         grafo.__parent__ = reproduccion
         reproduccion[grafo.__name__] = grafo
         app_root.add_node(grafo, recurse=True)
+        abejas.toggle_featured(grafo)
         grafo._p_changed = True
 
         abejas.__parent__ = app_root
         abejas.__explorer__ = HoneycombExplorer(abejas)
         app_root['abejas'] = abejas
 
-        abejopolis = CellWebContent('abejopolis', title="Abejópolis", url="https://convida.cua.uam.mx/abejopolis/")
+        mecanismos = mapa["mecanismos-de-libado"]
         libado = CellWebContent('libado', title="Libado", url="https://convida.cua.uam.mx/libado/")
+        libado.__parent__ = mecanismos
+        mecanismos['libado'] = libado
+        abejas.toggle_featured(libado)
+        app_root.add_node(libado)
+
+        abejopolis = CellWebContent('abejopolis', title="Abejópolis", url="https://convida.cua.uam.mx/abejopolis/")
         abejopolis.__parent__ = abejas
         abejas['abejopolis'] = abejopolis
-        libado.__parent__ = abejas
-        abejas['libado'] = libado
+        abejas.toggle_featured(abejopolis)
         app_root.add_node(abejopolis)
-        app_root.add_node(libado)
 
 
 
