@@ -83,11 +83,26 @@ class HoneycombResource:
             for child in child_nodes
         ]
 
+        # Featured: nodos resaltados en la vista de catálogo
+        featured = []
+
+        for cell in hc.__featured__.values():
+            featured.append({
+                "id": cell.id.hex,
+                "data": {
+                    "label": cell.title,
+                    "themeColor": "default",
+                    "url": self.request.resource_url(cell),
+                    "icon": cell.icon,
+                },
+            })
+
         return {
             "id": hc_node["id"],
             "title": hc.title,
             "nodes": [hc_node] + child_nodes,
             "edges": edges,
+            "featured": featured,
         }
 
 @resource(path='/api/v1/node/{node_id}', cors_origins=('*',), factory='honeycomb.root_factory')
@@ -119,6 +134,7 @@ class NodeResource:
             "iconUrl": getattr(node, "icon", None),
             "nodes": [],
             "edges": [],
+            "featured": [],
             "type": None,
             "href": None,
             "src": None,
@@ -166,6 +182,9 @@ class NodeResource:
                     "iconUrl": getattr(child, "icon", None),
                     "position": position,
                 })
+
+                if child.is_featured:
+                    data["featured"].append(child.id.hex)
 
             edges = root.__edges__.get(node_id, [])
             data["edges"] = [edge for edge in edges]

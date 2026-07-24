@@ -172,6 +172,18 @@ class Honeycomb(PersistentMapping):
         self.title = title
         self.icon = None
         self.map = None
+        self.__featured__ = OOBTree()
+
+    def toggle_featured(self, node):
+        if self.__featured__.has_key(node.id.hex):
+            del self.__featured__[node.id.hex]
+            is_featured = False
+        else:
+            self.__featured__[node.id.hex] = node
+            is_featured = True
+        node.is_featured = is_featured
+        self._p_changed = True
+        return is_featured
 
     def set_map(self, honeycombmap):
         self.map = honeycombmap
@@ -193,6 +205,7 @@ class HoneycombGraph(PersistentMapping):
         self.id = uuid.uuid4()
         self.__name__ = name
         self.title = title
+        self.icon = None
         self.nodes = PersistentList()
         self.edges = PersistentList()
 
@@ -312,6 +325,7 @@ class CellLeaf(Persistent):
         super().__init__()
         self.__name__ = name
         self.__parent__ = parent
+        self.is_featured = False
         self.title = title
         self.icon = None
         # Cada nodo tiene un ID único y persistente
@@ -324,6 +338,7 @@ class CellNode(PersistentMapping):
         super().__init__()
         self.__name__ = name
         self.__parent__ = parent
+        self.is_featured = False
         self.title = title
         self.icon = None
         # Cada nodo tiene un ID único y persistente
