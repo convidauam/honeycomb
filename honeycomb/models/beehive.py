@@ -228,19 +228,20 @@ class HoneycombGraph(PersistentMapping):
         # 1. Crear todos los objetos de nodo
         for node_data in graph_data['nodes']:
             json_id = node_data['id']
-            node_type = node_data.get("type", None)
+            node_type = node_data["data"].get("type", None)
             assert node_type in ['custom', None]
             if node_type == "custom":
                 node_obj = CellNode(
                     name=node_data['data']['label'].lower().replace(" ", "-"),
                     title = node_data['data']['label'],
                 )
-            elif node_type == None:
-                node_obj = CellText( #ToDo: Graphs can have different kinds of node, this should also be codified in the JSON
+            else:
+                node_obj = CellLeaf( #ToDo: Graphs can have different kinds of node, this should also be codified in the JSON
                     title=node_data['data']['label'],
                     name=node_data['data']['label'].lower().replace(" ", "-"), #ToDo: Nodes should have a name, if it is not provided, it could be a scrub from the title or label. Use id as name only if there is no other option.
-                    contents=node_data['data']['label']
+                    #contents=node_data['data']['label']
                 )
+            assert type(node_obj) is CellNode or not node_type
             node_obj.id = json_id
             node_obj.__parent__ = graph
 
