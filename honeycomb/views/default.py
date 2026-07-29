@@ -69,7 +69,7 @@ def honeycomb_matrix(request):
             matrix = request.context.__explorer__.matrix
         return matrix.tolist()
 
-
+# Vista crear audio
 @view_config(context=Honeycomb, name="audio", renderer='json', request_method="POST", require_csrf=True)
 def audio_create_view(request):
     schema = AudioCellSchema()
@@ -286,7 +286,7 @@ def honeycomb_graph_view(context, request):
     }
 
 
-@view_config(context=CellAudio, renderer='json', request_method="GET", xhr=True)
+@view_config(context=CellAudio, renderer='json', request_method="GET")
 def audio_metadata_view(request):
     """Obtener metadatos del audio"""
     cell = request.context
@@ -294,12 +294,15 @@ def audio_metadata_view(request):
         title = cell.__name__.title() if cell.__name__ else "Audio"
     else:
         title = cell.title
+
+    duracion = getattr(cell, 'length', getattr(cell, 'lenght', 0.0))
+
     return {
         'title': title,
         'id': cell.id.hex if hasattr(cell.id, 'hex') else str(cell.id),
-        'length': cell.length,
+        'length': duracion,
         'mime-type': cell.mime,
-        'stream_url': request.resource_url(cell) + "stream"
+        'stream_url': request.resource_url(cell, '@@stream')
     }
 
 @view_config(context=CellAudio, name="stream", request_method="GET")
@@ -312,19 +315,21 @@ def audio_stream_view(request):
     return response
 
 
-@view_config(context=CellIcon, renderer='json', request_method="GET", xhr=True)
+@view_config(context=CellIcon, renderer='json', request_method="GET")
 def image_metadata_view(request):
     """Obtener metadatos de imagen"""
     cell = request.context
     return {
         'id': str(cell.id),
         'titulo': cell.title or cell.__name__,
-        'icono': cell.icon,
+        'icono': getattr(cell, 'icon', ''),
+        'mime-type': getattr(cell, 'mime', 'image/jpeg'),
+        'image_url': request.resource_url(cell, '@@stream'),
         'tipo': 'imagen'
     }
 
 
-@view_config(context=CellText, renderer='json', request_method="GET", xhr=True)
+@view_config(context=CellText, renderer='json', request_method="GET")
 def text_metadata_view(request):
     """Obtener metadatos de texto"""
     cell = request.context
@@ -336,19 +341,40 @@ def text_metadata_view(request):
     }
 
 
-@view_config(context=CellAnimation, renderer='json', request_method="GET", xhr=True)
+@view_config(context=CellIcon, name="stream", request_method="GET")
+def image_stream_view(request):
+    """Enviar el archivo físico de la imagen"""
+    cell = request.context
+    response = request.response
+    response.content_type = getattr(cell, 'mime', 'image/jpeg')
+    response.app_iter = FileIter(cell.data.open("r"))
+    return response
+
+
+@view_config(context=CellAnimation, renderer='json', request_method="GET")
 def animation_metadata_view(request):
     """Obtener metadatos de animación"""
     cell = request.context
     return {
-        'id': str(cell.id),
+'id': str(cell.id),
         'titulo': cell.title or cell.__name__,
-        'url': cell.href,
+        'mime-type': getattr(cell, 'mime', 'image/gif'),
+        'stream_url': request.resource_url(cell, '@@stream'),
         'tipo': 'animacion'
     }
 
 
-@view_config(context=CellWebContent, renderer='json', request_method="GET", xhr=True)
+@view_config(context=CellAnimation, name="stream", request_method="GET")
+def animation_stream_view(request):
+    """Enviar el archivo físico del GIF"""
+    cell = request.context
+    response = request.response
+    response.content_type = getattr(cell, 'mime', 'image/gif')
+    response.app_iter = FileIter(cell.data.open("r"))
+    return response
+
+
+@view_config(context=CellWebContent, renderer='json', request_method="GET")
 def webcontent_metadata_view(request):
     """Obtener metadatos de contenido web"""
     cell = request.context
@@ -361,52 +387,171 @@ def webcontent_metadata_view(request):
 
 
 #Crear
-@view_config(context=Honeycomb, name='admin', permission='read', renderer='json', request_method='POST')
-def admin_create_node(context, request):
-    """Crear un nuevo nodo dentro de un honeycomb"""
-    data = request.json_body
-    tipo = data.get('tipo')
-    nombre = data.get('nombre')
-    titulo = data.get('titulo')
+@view_config(context=Honeycomb, name="video", renderer='json', request_method="POST", require_csrf=True)
+def video_create_view(request):
+    """Video"""
+    try:
+        title = request.POST['title']
+        url = request.POST['url']
+        parent_uuid = request.POST.get('parent')
+        
+        root = request.context.__parent__
+        parent = root.__nodes__.get(parent_uuid, request.context)
+
+        cell = CellWebContent(name="", url=url, title=title)
+        cell.__parent__ = parent
+        parent[cell.__name__] = cell
+
+        beehive = traversal.find_root(request.context)
+        if hasattr(beehive, 'add_node'):
+            beehive.add_node(cell)
+
+        request.response.status_int = 201
+        return {'status': 'creado', 'id': str(cell.id), 'title': cell.title, 'url': request.resource_url(cell)}
+    except KeyError as e:
+        request.response.status = 400
+        return {'error': f'Falta el campo obligatorio: {str(e)}'}
     
-    if not tipo or not nombre:
-        return {'error': 'Faltan campos obligatorios: tipo, nombre'}
+
+@view_config(context=Honeycomb, name="texto", renderer='json', request_method="POST", require_csrf=True)
+def text_create_view(request):
+    """Texto"""
+    try:
+        title = request.POST['title']
+        contenido = request.POST.get('contents', '')
+        parent_uuid = request.POST.get('parent')
+        
+        root = request.context.__parent__
+        parent = root.__nodes__.get(parent_uuid, request.context)
+
+        cell = CellText(name="", contents=contenido, title=title)
+        cell.__parent__ = parent
+        parent[cell.__name__] = cell
+
+        beehive = traversal.find_root(request.context)
+        if hasattr(beehive, 'add_node'):
+            beehive.add_node(cell)
+
+        request.response.status_int = 201
+        return {'status': 'creado', 'id': str(cell.id), 'title': cell.title, 'url': request.resource_url(cell)}
+    except KeyError as e:
+        request.response.status = 400
+        return {'error': f'Falta el campo obligatorio: {str(e)}'}
     
-    if tipo == 'audio':
-        nuevo = CellWebContent(nombre, data.get('url', ''), titulo)
-    elif tipo == 'video':
-        nuevo = CellWebContent(nombre, data.get('url', ''), titulo)
-    elif tipo == 'imagen':
-        nuevo = CellIcon(nombre, titulo, data.get('icono'))
-    elif tipo == 'animacion':
-        nuevo = CellAnimation(nombre, data.get('url', ''), titulo)
-    elif tipo == 'texto':
-        nuevo = CellText(nombre, data.get('contenido', ''), titulo)
-    else:
-        return {'error': f'Tipo "{tipo}" no válido'}
+
+@view_config(context=Honeycomb, name="imagen", renderer='json', request_method="POST", require_csrf=True)
+def image_create_view(request):
+    """Imagen"""
+    try:
+        source = request.POST['data'].file
+        title = request.POST['title']
+        mimetype = request.POST.get('mimetype', 'image/jpeg')
+        parent_uuid = request.POST.get('parent')
+
+        # 10 MB para imágenes (10485760 bytes)
+        max_size = int(request.registry.settings.get('beehive_max_image_size', 10485760))
+        source.seek(0, 2)
+        if source.tell() > max_size:
+            request.response.status = 400
+            return {'error': 'La imagen debe ser de máximo 10 MB'}
+        source.seek(0) 
+
+        root = request.context.__parent__
+        parent = root.__nodes__.get(parent_uuid, request.context)
+
+        archivo_blob = Blob()
+        with archivo_blob.open('w') as target:
+            while True:
+                b = source.read(4096)
+                if not b: break
+                target.write(b)
+
+        cell = CellIcon(name="", data=archivo_blob, mime=mimetype, title=title)
+        cell.__parent__ = parent
+        parent[cell.__name__] = cell
+
+        beehive = traversal.find_root(request.context)
+        if hasattr(beehive, 'add_node'):
+            beehive.add_node(cell)
+
+        request.response.status_int = 201
+        return {'status': 'creado', 'id': str(cell.id), 'title': cell.title, 'url': request.resource_url(cell)}
+    except Exception as e:
+        request.response.status = 400
+        return {'error': f'Error al procesar la imagen: {str(e)}'}
     
-    context[nombre] = nuevo
-    
-    # Guardar en BeeHive para evitar que un nodo quede huérfano
-    beehive = traversal.find_root(context)
-    if hasattr(beehive, 'add_node'):
-        beehive.add_node(nuevo)
-    
-    request.response.status_int = 201
-    return {
-        'status': 'creado',
-        'id': str(nuevo.id),
-        'nombre': nombre,
-        'url': request.resource_url(nuevo)
-    }
+
+@view_config(context=Honeycomb, name="animacion", renderer='json', request_method="POST", require_csrf=True)
+def animation_create_view(request):
+    """Animación"""
+    try:
+        source = request.POST['data'].file
+        title = request.POST['title']
+        mimetype = request.POST.get('mimetype', 'image/gif')
+        parent_uuid = request.POST.get('parent')
+
+        # 20 MB para gif (20971520 bytes)
+        max_size = int(request.registry.settings.get('beehive_max_animation_size', 20971520))
+        source.seek(0, 2)
+        if source.tell() > max_size:
+            request.response.status = 400
+            return {'error': 'El gif debe ser de máximo 20 MB'}
+        source.seek(0) 
+
+        root = request.context.__parent__
+        parent = root.__nodes__.get(parent_uuid, request.context)
+
+        archivo_blob = Blob()
+        with archivo_blob.open('w') as target:
+            while True:
+                b = source.read(4096)
+                if not b: break
+                target.write(b)
+
+        cell = CellAnimation(name="", data=archivo_blob, mime=mimetype, title=title)
+        cell.__parent__ = parent
+        parent[cell.__name__] = cell
+
+        beehive = traversal.find_root(request.context)
+        if hasattr(beehive, 'add_node'):
+            beehive.add_node(cell)
+
+        request.response.status_int = 201
+        return {'status': 'creado', 'id': str(cell.id), 'title': cell.title, 'url': request.resource_url(cell)}
+    except Exception as e:
+        request.response.status = 400
+        return {'error': f'Error al procesar la animación: {str(e)}'}
+
 
 #Actualizar
+@view_config(context=CellAudio, name='admin', permission='read', renderer='json', request_method='PUT')
+def admin_update_audio(context, request):
+    """Actualizar metadatos de audio"""
+    data = request.POST if request.POST else getattr(request, 'json_body', {})
+    
+    if 'titulo' in data or 'title' in data:
+        context.title = data.get('title', data.get('titulo', context.title))
+        
+    if 'data' in request.POST and hasattr(request.POST['data'], 'file'):
+        source = request.POST['data'].file
+        context.mime = request.POST.get('mimetype', context.mime)
+        
+        archivo_blob = Blob()
+        with archivo_blob.open('w') as target:
+            while True:
+                b = source.read(4096)
+                if not b: break
+                target.write(b)
+        context.data = archivo_blob
+
+    return {'status': 'actualizado', 'id': str(context.id)}
+
 @view_config(context=CellWebContent, name='admin', permission='read', renderer='json', request_method='PUT')
 def admin_update_webcontent(context, request):
-    """Actualizar audio o video"""
-    data = request.json_body
-    if 'titulo' in data:
-        context.title = data['titulo']
+    """Actualizar video"""
+    data = request.POST if request.POST else getattr(request, 'json_body', {})
+    if 'titulo' in data or 'title' in data:
+        context.title = data.get('title', data.get('titulo', context.title))
     if 'url' in data:
         context.href = data['url']
     return {'status': 'actualizado', 'id': str(context.id)}
@@ -414,11 +559,30 @@ def admin_update_webcontent(context, request):
 @view_config(context=CellIcon, name='admin', permission='read', renderer='json', request_method='PUT')
 def admin_update_icon(context, request):
     """Actualizar imagen"""
-    data = request.json_body
-    if 'titulo' in data:
-        context.title = data['titulo']
-    if 'icono' in data:
-        context.icon = data['icono']
+    data = request.POST if request.POST else getattr(request, 'json_body', {})
+    if 'titulo' in data or 'title' in data:
+        context.title = data.get('title', data.get('titulo', context.title))
+    if 'data' in request.POST and hasattr(request.POST['data'], 'file'):
+        source = request.POST['data'].file
+        mimetype = request.POST.get('mimetype', context.mime)
+
+        max_size = int(request.registry.settings.get('beehive_max_image_size', 10485760))
+        source.seek(0, 2)
+        if source.tell() > max_size:
+            request.response.status = 400
+            return {'error': 'La imagen debe ser de máximo 10 MB'}
+        source.seek(0) 
+        
+        archivo_blob = Blob()
+        with archivo_blob.open('w') as target:
+            while True:
+                b = source.read(4096)
+                if not b: break
+                target.write(b)
+                
+        context.data = archivo_blob
+        context.mime = mimetype
+        
     return {'status': 'actualizado', 'id': str(context.id)}
 
 @view_config(context=CellText, name='admin', permission='read', renderer='json', request_method='PUT')
@@ -434,11 +598,34 @@ def admin_update_text(context, request):
 @view_config(context=CellAnimation, name='admin', permission='read', renderer='json', request_method='PUT')
 def admin_update_animation(context, request):
     """Actualizar animación"""
-    data = request.json_body
-    if 'titulo' in data:
-        context.title = data['titulo']
-    if 'url' in data:
-        context.href = data['url']
+    data = request.POST if request.POST else getattr(request, 'json_body', {})
+    
+    if 'titulo' in data or 'title' in data:
+        context.title = data.get('title', data.get('titulo', context.title))
+        
+    # Si viene un archivo nuevo (gif), lo actualizamos
+    if 'data' in request.POST and hasattr(request.POST['data'], 'file'):
+        source = request.POST['data'].file
+        mimetype = request.POST.get('mimetype', context.mime)
+        
+        # Validación de tamaño (Max 20 MB)
+        max_size = int(request.registry.settings.get('beehive_max_animation_size', 20971520))
+        source.seek(0, 2)
+        if source.tell() > max_size:
+            request.response.status = 400
+            return {'error': 'El gif debe ser de máximo 20 MB'}
+        source.seek(0) 
+        
+        archivo_blob = Blob()
+        with archivo_blob.open('w') as target:
+            while True:
+                b = source.read(4096)
+                if not b: break
+                target.write(b)
+                
+        context.data = archivo_blob
+        context.mime = mimetype
+        
     return {'status': 'actualizado', 'id': str(context.id)}
 
 #Eliminar
@@ -461,34 +648,3 @@ def admin_delete_node(context, request):
     return {'error': 'No se pudo eliminar el nodo o ya no existe'}
 
 
-@view_config(context=CellAudio, renderer='json', request_method='GET')
-def view_audio_cell(context, request):
-    """
-    Devuelve los datos del audio.
-    """
-    url_reproduccion = request.resource_url(context, '@@play')
-
-    return {
-        'url': url_reproduccion,
-        # Buscamos 'length' primero, y si no está, probamos con 'lenght' por si acaso
-        'duracion': getattr(context, 'length', getattr(context, 'lenght', 0.0))
-    }
-
-@view_config(context=CellAudio, name='play', request_method='GET')
-def play_audio(context, request):
-    """
-    Esta vista saca el archivo Blob de la base de datos ZODB y lo transmite 
-    como un archivo de audio para que el navegador/frontend lo pueda escuchar.
-    """
-    # Obtenemos el archivo binario que guardamos en el POST
-    blob = context.data
-    
-    # Preparamos la respuesta para decirle al navegador que es un audio
-    response = request.response
-    response.content_type = getattr(context, 'mime', 'audio/mpeg')
-    
-    # Abrimos el blob en modo lectura ('r') y lo enviamos por partes (FileIter)
-    archivo_abierto = blob.open('r')
-    response.app_iter = FileIter(archivo_abierto)
-    
-    return response

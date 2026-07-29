@@ -303,24 +303,17 @@ class StaticCell(CellLeaf):
 
 
 class CellIcon(CellLeaf):
-    """A BeeHive cell icon."""
-    def __init__(self, name, title="", icon=None):
+    """A BeeHive cell icon (binary blob)."""
+    def __init__(self, name, data, mime, title="", icon=None):
         super().__init__(name=name, title=title)
-        self.__name__ = name
-        self.title = title
+        self.data = data
+        self.mime = mime
         self.icon = icon
 
-    def set_icon(self, icon):
-        self.icon = icon
-
-    def get_icon(self):
-        return self.icon
-    
 
 class CellText(CellLeaf):
     def __init__(self, name, contents, title="", icon=None):
         super().__init__(name=name, title=title)
-        self.__name__ = name
         self.title = title
         self.contents = contents
         self.icon = icon
@@ -343,7 +336,6 @@ class CellText(CellLeaf):
 class CellRichText(CellLeaf):
     def __init__(self, name, contents, title="", icon=None):
         super().__init__(name=name, title=title)
-        self.__name__ = name
         self.title = title
         self.source = contents
         self.icon = icon
@@ -356,18 +348,12 @@ class CellRichText(CellLeaf):
 
 
 class CellAnimation(CellLeaf):
-    def __init__(self, name, url, title="", icon=None):
+    """Animation (binary blob)."""
+    def __init__(self, name, data, mime, title="", icon=None):
         super().__init__(name=name, title=title)
-        self.__name__ = name
-        self.href = url
-        self.title = title
+        self.data = data
+        self.mime = mime
         self.icon = icon
-
-    def set_icon(self, icon):
-        self.icon = icon
-
-    def get_icon(self):
-        return self.icon
 
 
 class CellAudio(CellLeaf):
@@ -383,7 +369,6 @@ class CellAudio(CellLeaf):
 class CellWebContent(CellLeaf):
     def __init__(self, name, url, title="", icon=None):
         super().__init__(name=name, title=title)
-        self.__name__ = name
         self.href = url
         self.title = title
         self.icon = icon

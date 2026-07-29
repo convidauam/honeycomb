@@ -1,5 +1,6 @@
 from .beehive import *
 from .axes import *
+from ZODB.blob import Blob
 
 def appmaker(zodb_root):
     if 'app_root' not in zodb_root:
@@ -36,7 +37,12 @@ def appmaker(zodb_root):
 
          # Nodo de Rich Text
 
-        icon = CellIcon('logo', title="Bee Logo", icon="🐝")
+        # icon = CellIcon('logo', title="Bee Logo", icon="🐝")
+        dummy_blob = Blob()
+        with dummy_blob.open('w') as f:
+            f.write(b"")
+        
+        icon = CellIcon('logo', data=dummy_blob, mime='image/png', title="Bee Logo", icon="🐝")
         icon.__parent__ = hc
         hc['logo'] = icon
 
@@ -72,7 +78,12 @@ def appmaker(zodb_root):
 
          # Nodo de Animación
 
-        animation = CellAnimation('bee-dance', url="/static/bee-dance.gif", title="Bee Dance", icon="🐝")
+        #animation = CellAnimation('bee-dance', url="/static/bee-dance.gif", title="Bee Dance", icon="🐝")
+        dummy_blob_anim = Blob()
+        with dummy_blob_anim.open('w') as f:
+            f.write(b"")
+
+        animation = CellAnimation('bee-dance', data=dummy_blob_anim, mime='image/gif', title="Bee Dance", icon="🐝")
         animation.__parent__ = hc
         hc['bee-dance'] = animation
 
