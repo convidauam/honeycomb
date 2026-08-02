@@ -1,17 +1,21 @@
 # Comunicación de los videojuegos con la API
 
-Referencia: issue #15 "Comunicación de los videojuegos con la API".
+Referencia: issue #15 "Comunicación de los videojuegos con la API". Los nombres de endpoint aquí están alineados al contrato ya documentado en [convidauam/wikiabeja](https://github.com/convidauam/wikiabeja) (`componentes/API.md`).
 
 Este documento describe el contrato homologado con el que cualquier videojuego de la plataforma se comunica con el backend de Honeycomb. Es el mismo contrato para todos los juegos: mismos endpoints, mismo formato de respuesta, mismo SDK.
+
+Este es el primero de tres hilos de trabajo relacionados: (A, este documento) contrato de endpoints, (B) capa OpenAPI/Swagger para que los juegos generen su cliente automáticamente, (C) login de identidad vía ActivityPub. B y C se documentan por separado cuando se implementen.
 
 ## Resumen
 
 | Necesidad | Endpoint | Método | Acceso |
 |---|---|---|---|
 | Datos del usuario | `/api/v1/me` | GET | solo lectura |
-| Interacciones previas con un contenido | `/api/v1/games/{nodeid}/data` | GET | solo lectura (campo `interactions`) |
-| Estadísticas del usuario en ese contenido | `/api/v1/games/{nodeid}/data` | GET/POST | lectura/escritura (campo `stats`) |
-| Preferencias del usuario en ese contenido | `/api/v1/games/{nodeid}/data` | GET/POST | lectura/escritura (campo `preferences`) |
+| Interacciones previas con un contenido | `/api/v1/sipping/{nodeid}` | GET | solo lectura (campo `interactions`) |
+| Estadísticas del usuario en ese contenido | `/api/v1/sipping/{nodeid}` | GET/POST | lectura/escritura (campo `stats`) |
+| Preferencias del usuario en ese contenido | `/api/v1/sipping/{nodeid}` | GET/POST | lectura/escritura (campo `preferences`) |
+
+Nombre de ruta alineado al contrato ya documentado en la wiki del proyecto ([convidauam/wikiabeja](https://github.com/convidauam/wikiabeja), `componentes/API.md`): `sipping`, no `games`.
 
 `nodeid` es el `uuid` del nodo/celda que representa al videojuego dentro de un Honeycomb (el mismo id que ya expone `GET /api/v1/node/{node_id}`).
 
@@ -38,7 +42,7 @@ Sin sesión: `401 {"error": "Unauthorized"}`.
 
 Un videojuego nunca puede modificar estos datos: no existe verbo de escritura para este recurso.
 
-### GET /api/v1/games/{nodeid}/data
+### GET /api/v1/sipping/{nodeid}
 
 Devuelve el registro homologado del usuario autenticado para ese contenido. Si el usuario nunca ha interactuado con el nodo, devuelve valores por defecto (no crea nada).
 
@@ -63,7 +67,7 @@ Respuesta 200:
 
 Sin sesión: `401`.
 
-### POST /api/v1/games/{nodeid}/data
+### POST /api/v1/sipping/{nodeid}
 
 Guarda `stats` y/o `preferences` del usuario autenticado para ese nodo, y cuenta una interacción más.
 
@@ -93,7 +97,9 @@ No requiere CSRF token (`require_csrf=False`): es una API JSON same-origin prote
 
 ### Endpoints previos (compatibilidad)
 
-`GET /api/v1/drones/{userid}` y `GET /api/v1/userid` seguían de un trabajo exploratorio previo en esta misma rama y se dejan intactos por compatibilidad, pero **el contrato homologado a usar en juegos nuevos es `/api/v1/me`**.
+`GET /api/v1/drones/{userid}` y `GET /api/v1/userid` ya estaban documentados en la wiki del proyecto y se dejan intactos; `/api/v1/me` se agrega como alias de conveniencia (mismo dato, sin tener que mandar el `userid` en la URL, sin riesgo de 403 por mismatch). Cualquiera de los dos sirve para el contrato homologado.
+
+Nota sobre `sipping`: la ruta ya estaba documentada en la wiki, pero el borrador original ahí descrito usaba un diccionario en memoria (se perdía al reiniciar el servidor). Esta implementación mantiene la misma ruta y el mismo propósito, pero con persistencia real en ZODB y separación explícita de solo lectura/lectura-escritura (ver más abajo).
 
 ## Seguridad
 
@@ -127,10 +133,31 @@ Los registros (`GameData`) se guardan en ZODB, dentro de la raíz (`BeeHive.__ga
 ```
 
 - `Honeycomb.connect(nodeId?)`: llama a `/me`, devuelve una sesión con `.user`. Si no se pasa `nodeId`, intenta detectarlo de `?nodeid=` en la URL del juego o de `data-node-id` en su propio `<script>` tag.
-- `hc.load(nodeId?)`: GET de `/games/{nodeid}/data`. Usa el `nodeId` de conexión si no se pasa uno explícito.
-- `hc.save(nodeId?, data)`: POST a `/games/{nodeid}/data`. También acepta `hc.save(data)` usando el `nodeId` de conexión.
+- `hc.load(nodeId?)`: GET de `/sipping/{nodeid}`. Usa el `nodeId` de conexión si no se pasa uno explícito.
+- `hc.save(nodeId?, data)`: POST a `/sipping/{nodeid}`. También acepta `hc.save(data)` usando el `nodeId` de conexión.
 
 Pendiente (fuera de este alcance): la plataforma todavía no inyecta automáticamente `?nodeid=` en la URL de cada juego embebido; por ahora el `nodeId` debe pasarse explícitamente a `connect`/`load`/`save`, o el juego debe construirse conociendo su propio nodeid.
+
+## Descubrimiento automático (OpenAPI + openapi-client-axios)
+
+Además del SDK, la API se describe en `GET /openapi/openapi.json` (OpenAPI 3.0.3), tal como lo documenta la wiki del proyecto en `Conexión_Cliente_Servidor.md`. Cualquier juego puede generar un cliente tipado con [openapi-client-axios](https://openapistack.co/docs/openapi-client-axios/intro/) y llamar por `operationId` en vez de armar URLs a mano:
+
+```js
+const OpenAPIClientAxios = require('openapi-client-axios').default;
+
+const api = new OpenAPIClientAxios({
+  definition: 'http://localhost:6543/openapi/openapi.json',
+  axiosConfigDefaults: { baseURL: 'http://localhost:6543', withCredentials: true },
+});
+const client = await api.init();
+
+const { data } = await client.getSippingData({ nodeid: 'juego-de-serpiente' });
+await client.saveSippingData({ nodeid: 'juego-de-serpiente' }, { stats: { highscore: 950 } });
+```
+
+`operationId` por endpoint: `listHoneycombs`, `getHoneycomb`, `getNode`, `getMe`, `getDrone`, `getUserId`, `getSippingData`, `saveSippingData`.
+
+**Nota de implementación:** el spec se mantiene a mano en `honeycomb/openapi.py`, no se genera con `cornice-swagger`. Se probó `cornice-swagger` (única versión existente, 1.0.1 de 2021) y sí corre con cornice 6.1/Python 3.12, pero genera **Swagger 2.0**, y `openapi-client-axios` requiere **OpenAPI 3.x** explícitamente (sin conversión automática). Mantener el spec a mano también evita depender de un paquete sin mantenimiento desde 2021 y da control total sobre los ejemplos de respuesta (cornice-swagger, sin esquemas `colander` en cada recurso, solo documenta `"UNDOCUMENTED RESPONSE"`). Verificado end-to-end con `openapi-client-axios` real contra el servidor local: generación del cliente, 401 sin sesión, y el flujo completo de `sipping` (GET default → POST → interactions incrementado).
 
 ## Nota sobre las pruebas
 
