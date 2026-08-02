@@ -11,10 +11,21 @@
 {% block content %}
 <div class="content row">
     <div class="col-md-8">
+      {% if error %}
+      <div class="alert alert-danger">{{ error }}</div>
+      {% endif %}
       {% if login_form %}
          {{ login_form|safe }}
       {% else %}
-          <form><input type="submit" value="login"></form>
+          <form method="post" action="/api/v1/auth/login">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="next" value="{{ next_url }}">
+            <div class="form-group">
+              <label for="handle">Tu usuario del Fediverso</label>
+              <input type="text" class="form-control" id="handle" name="handle" placeholder="usuario@instancia.social" required>
+            </div>
+            <input type="submit" class="btn btn-primary" value="Iniciar sesión">
+          </form>
       {% endif %}
       {% if appstruct %}
       {{ appstruct }}

@@ -74,6 +74,8 @@ class BeeHive(PersistentMapping):
         self.__nodes__ = OOBTree()
         self.__edges__ = OOBTree()
         self.__game_data__ = OOBTree()
+        self.__users__ = OOBTree()
+        self.__oauth_apps__ = OOBTree()
 
     # datos de videojuegos (GameData): acceso homologado por usuario + nodo
     def get_game_data(self, userid, nodeid, create=False):
@@ -92,6 +94,31 @@ class BeeHive(PersistentMapping):
             record = GameData(userid, nodeid)
             user_bucket[nodeid] = record
         return record
+
+    # usuarios autenticados vía identidad del Fediverso, keyed por userid canónico
+    def get_user(self, userid):
+        if not hasattr(self, "__users__"):
+            self.__users__ = OOBTree()
+        return self.__users__.get(userid)
+
+    def upsert_user(self, drone_user):
+        """Guarda o actualiza un DroneUser ya construido, indexado por su userid."""
+        if not hasattr(self, "__users__"):
+            self.__users__ = OOBTree()
+        self.__users__[drone_user.userid] = drone_user
+        return drone_user
+
+    # credenciales OAuth registradas por instancia (dominio del Fediverso)
+    def get_oauth_app(self, domain):
+        if not hasattr(self, "__oauth_apps__"):
+            self.__oauth_apps__ = OOBTree()
+        return self.__oauth_apps__.get(domain)
+
+    def set_oauth_app(self, domain, client_id, client_secret):
+        if not hasattr(self, "__oauth_apps__"):
+            self.__oauth_apps__ = OOBTree()
+        self.__oauth_apps__[domain] = PersistentMapping({"client_id": client_id, "client_secret": client_secret})
+        return self.__oauth_apps__[domain]
 
     # gestión de nodos y aristas
     def add_node(self, node, recurse=False):
