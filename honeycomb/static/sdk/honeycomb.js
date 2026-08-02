@@ -38,7 +38,7 @@ window.Honeycomb = (function () {
   HoneycombSession.prototype.load = function (nodeId) {
     var id = nodeId || this.nodeId;
     if (!id) return Promise.reject(new Error('Honeycomb: nodeId is required'));
-    return request('/games/' + encodeURIComponent(id) + '/data');
+    return request('/sipping/' + encodeURIComponent(id));
   };
 
   HoneycombSession.prototype.save = function (nodeId, data) {
@@ -49,7 +49,7 @@ window.Honeycomb = (function () {
       id = this.nodeId;
     }
     if (!id) return Promise.reject(new Error('Honeycomb: nodeId is required'));
-    return request('/games/' + encodeURIComponent(id) + '/data', {
+    return request('/sipping/' + encodeURIComponent(id), {
       method: 'POST',
       body: JSON.stringify(payload || {}),
     });

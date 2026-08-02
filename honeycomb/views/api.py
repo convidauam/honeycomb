@@ -263,9 +263,9 @@ def _validate_game_payload(mapping, field_name):
     return None
 
 
-@resource(path='/api/v1/games/{nodeid}/data', cors_origins=('*',), factory='honeycomb.root_factory', require_csrf=False)
+@resource(path='/api/v1/sipping/{nodeid}', cors_origins=('*',), factory='honeycomb.root_factory', require_csrf=False)
 class GameDataResource:
-    """Datos homologados de un videojuego para el usuario autenticado y un nodo (b)."""
+    """Datos homologados de un videojuego para el usuario autenticado y un nodo (b). Ruta documentada: sipping."""
 
     def __init__(self, request, context=None):
         self.request = request
