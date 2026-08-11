@@ -7,6 +7,9 @@ EXPECTED_OPERATION_IDS = {
     ('/api/v1/userid', 'get'): 'getUserId',
     ('/api/v1/sipping/{nodeid}', 'get'): 'getSippingData',
     ('/api/v1/sipping/{nodeid}', 'post'): 'saveSippingData',
+    ('/api/v1/sipping/{nodeid}/badges', 'post'): 'awardBadge',
+    ('/api/v1/achievements', 'get'): 'getAchievements',
+    ('/api/v1/share', 'post'): 'shareAchievement',
 }
 
 

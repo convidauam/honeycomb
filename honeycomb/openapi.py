@@ -17,6 +17,30 @@ USER_SCHEMA = {
     },
 }
 
+IDENTITY_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "kind": {"type": "string", "enum": ["fediverse", "password"], "description": "Tipo de credencial vinculada"},
+        "value": {"type": "string", "description": "URL del actor (fediverse) o nombre de usuario (password)"},
+    },
+}
+
+ME_SCHEMA = {
+    "allOf": [USER_SCHEMA, {
+        "type": "object",
+        "properties": {
+            "identities": {
+                "type": "array", "items": IDENTITY_SCHEMA,
+                "description": "Credenciales vinculadas a esta cuenta (Fediverso y/o usuario+contrasena)",
+            },
+            "can_share": {
+                "type": "boolean",
+                "description": "Si hay lo necesario (identidad del Fediverso + token) para publicar logros ahora mismo",
+            },
+        },
+    }],
+}
+
 SIPPING_SCHEMA = {
     "type": "object",
     "properties": {
@@ -29,6 +53,20 @@ SIPPING_SCHEMA = {
         "first_seen": {"type": "string", "format": "date-time"},
         "last_seen": {"type": "string", "format": "date-time"},
     },
+}
+
+BADGE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "id": {"type": "string"},
+        "title": {"type": "string"},
+        "icon": {"type": "string", "nullable": True},
+        "awarded_at": {"type": "string", "format": "date-time"},
+    },
+}
+
+ACHIEVEMENT_SCHEMA = {
+    "allOf": [BADGE_SCHEMA, {"type": "object", "properties": {"nodeid": {"type": "string"}}}],
 }
 
 ERROR_SCHEMA = {
@@ -92,9 +130,9 @@ def build_openapi_spec(base_url):
             "/api/v1/me": {
                 "get": {
                     "operationId": "getMe",
-                    "summary": "Datos de solo lectura del usuario autenticado",
+                    "summary": "Datos de solo lectura del usuario autenticado, incluyendo sus credenciales vinculadas",
                     "responses": {
-                        "200": {"description": "Perfil del usuario", "content": {"application/json": {"schema": USER_SCHEMA}}},
+                        "200": {"description": "Perfil del usuario", "content": {"application/json": {"schema": ME_SCHEMA}}},
                         "401": UNAUTHORIZED,
                     },
                 },
@@ -151,6 +189,71 @@ def build_openapi_spec(base_url):
                         "200": {"description": "Registro actualizado", "content": {"application/json": {"schema": SIPPING_SCHEMA}}},
                         "400": {"description": "JSON invalido o stats/preferences no son objetos", "content": {"application/json": {"schema": ERROR_SCHEMA}}},
                         "401": UNAUTHORIZED,
+                    },
+                },
+            },
+            "/api/v1/sipping/{nodeid}/badges": {
+                "post": {
+                    "operationId": "awardBadge",
+                    "summary": "Otorga un logro al usuario autenticado para un nodo (controlado por el juego)",
+                    "parameters": [{"name": "nodeid", "in": "path", "required": True, "schema": {"type": "string"}}],
+                    "requestBody": {
+                        "required": True,
+                        "content": {"application/json": {"schema": {
+                            "type": "object",
+                            "required": ["id", "title"],
+                            "properties": {
+                                "id": {"type": "string", "description": "Identificador del logro, elegido por el juego"},
+                                "title": {"type": "string"},
+                                "icon": {"type": "string", "nullable": True},
+                            },
+                        }}},
+                    },
+                    "responses": {
+                        "200": {"description": "Registro actualizado con el logro otorgado", "content": {"application/json": {"schema": SIPPING_SCHEMA}}},
+                        "400": {"description": "id/title faltantes o invalidos", "content": {"application/json": {"schema": ERROR_SCHEMA}}},
+                        "401": UNAUTHORIZED,
+                    },
+                },
+            },
+            "/api/v1/achievements": {
+                "get": {
+                    "operationId": "getAchievements",
+                    "summary": "Todos los logros del usuario autenticado, en cualquier nodo",
+                    "responses": {
+                        "200": {"description": "Lista de logros", "content": {"application/json": {"schema": {
+                            "type": "object",
+                            "properties": {"achievements": {"type": "array", "items": ACHIEVEMENT_SCHEMA}},
+                        }}}},
+                        "401": UNAUTHORIZED,
+                    },
+                },
+            },
+            "/api/v1/share": {
+                "post": {
+                    "operationId": "shareAchievement",
+                    "summary": "Publica un logro ya otorgado como una nota en el Fediverso del usuario (ActivityPub C2S)",
+                    "requestBody": {
+                        "required": True,
+                        "content": {"application/json": {"schema": {
+                            "type": "object",
+                            "required": ["nodeid", "badge_id"],
+                            "properties": {
+                                "nodeid": {"type": "string"},
+                                "badge_id": {"type": "string"},
+                                "message": {"type": "string", "description": "Mensaje personalizado; si falta, se genera uno automatico"},
+                            },
+                        }}},
+                    },
+                    "responses": {
+                        "200": {"description": "Publicado", "content": {"application/json": {"schema": {
+                            "type": "object",
+                            "properties": {"status": {"type": "string"}, "activity": {"type": "object"}},
+                        }}}},
+                        "400": {"description": "Datos invalidos o no hay token de publicacion disponible", "content": {"application/json": {"schema": ERROR_SCHEMA}}},
+                        "401": UNAUTHORIZED,
+                        "404": {"description": "El usuario no tiene ese logro en ese nodo", "content": {"application/json": {"schema": ERROR_SCHEMA}}},
+                        "502": {"description": "La instancia del Fediverso rechazo la publicacion", "content": {"application/json": {"schema": ERROR_SCHEMA}}},
                     },
                 },
             },
