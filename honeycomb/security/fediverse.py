@@ -1,10 +1,13 @@
-"""Cliente OAuth2 identity-only contra instancias del Fediverso (API estilo Mastodon).
+"""Cliente OAuth2 identity-only contra instancias del Fediverso, via ActivityPub C2S.
 
-No implementa federacion ActivityPub (inbox/outbox, firmas HTTP): solo resuelve
-la instancia de un handle, registra una app OAuth por dominio, corre el flujo
-de authorization code, y lee el perfil via verify_credentials. Como el acceso
-es de entrada abierta (cualquier dominio que el usuario escriba), todas las
-llamadas salientes pasan por un guard anti-SSRF.
+El descubrimiento va primero por el estandar: WebFinger (RFC 7033) resuelve el
+handle al Actor de ActivityPub, y el propio documento del Actor puede declarar
+sus endpoints OAuth (extension de Mastodon/Pleroma: endpoints.oauth*). Cuando
+una instancia no los declara (p.ej. mastodon.social), se cae a las rutas
+conocidas de la API de Mastodon (/api/v1/apps, /oauth/authorize, /oauth/token).
+No implementa federacion completa (inbox/outbox de escritura, firmas HTTP) mas
+alla de leer el perfil. Como el acceso es de entrada abierta (cualquier dominio
+que el usuario escriba), todas las llamadas salientes pasan por un guard anti-SSRF.
 """
 
 import base64
@@ -13,64 +16,52 @@ import hmac
 import ipaddress
 import secrets
 import socket
-import threading
-import time
 import urllib.parse
 
 import requests
 
+from . import ratelimit
 from ..models.users import DroneUser
 
 REQUEST_TIMEOUT = (3.05, 8)
 MAX_REDIRECTS = 3
-SCOPE_MODERN = 'profile'
-SCOPE_FALLBACK = 'read:accounts'
+SCOPE_PROFILE_MODERN = 'profile'
+SCOPE_PROFILE_FALLBACK = 'read:accounts'
+SCOPE_PUBLISH = 'write:statuses'
+AS2_CONTENT_TYPES = (
+    'application/activity+json',
+    'application/ld+json; profile="https://www.w3.org/ns/activitystreams"',
+)
 
-REGISTRATION_RATE_WINDOW_SECONDS = 600
-REGISTRATION_RATE_MAX_PER_DOMAIN = 5
-REGISTRATION_RATE_MAX_GLOBAL = 30
+# Defaults usados solo si nadie llama a configure_registration_rate_limiter (p.ej.
+# scripts sueltos via pshell). La app real los reemplaza en el arranque leyendo
+# settings del .ini -- ver security/__init__.py:includeme.
+DEFAULT_REGISTRATION_RATE_WINDOW_SECONDS = 600
+DEFAULT_REGISTRATION_RATE_MAX_PER_DOMAIN = 5
+DEFAULT_REGISTRATION_RATE_MAX_GLOBAL = 30
 
 
 class FediverseError(Exception):
     """Error de usuario al resolver/hablar con una instancia del Fediverso."""
 
 
-class _RegistrationRateLimiter:
-    """Limita cuantas veces se puede llamar a register_app: por dominio y en total.
-
-    En memoria de proceso (un solo worker via waitress); si el registro de apps
-    empieza a fallar mucho o se despliega con varios workers, mover esto a un
-    almacen compartido (p.ej. la misma ZODB, o un cache externo).
-    """
-
-    def __init__(self, window_seconds, max_per_domain, max_global):
-        self.window_seconds = window_seconds
-        self.max_per_domain = max_per_domain
-        self.max_global = max_global
-        self._lock = threading.Lock()
-        self._by_domain = {}
-        self._global = []
-
-    def check_and_record(self, domain):
-        now = time.monotonic()
-        cutoff = now - self.window_seconds
-        with self._lock:
-            self._global = [t for t in self._global if t > cutoff]
-            if len(self._global) >= self.max_global:
-                raise FediverseError('Demasiados registros de apps en este momento, intenta mas tarde')
-
-            domain_attempts = [t for t in self._by_domain.get(domain, []) if t > cutoff]
-            if len(domain_attempts) >= self.max_per_domain:
-                raise FediverseError(f"Demasiados intentos de registro para '{domain}', intenta mas tarde")
-
-            domain_attempts.append(now)
-            self._by_domain[domain] = domain_attempts
-            self._global.append(now)
-
-
-_registration_rate_limiter = _RegistrationRateLimiter(
-    REGISTRATION_RATE_WINDOW_SECONDS, REGISTRATION_RATE_MAX_PER_DOMAIN, REGISTRATION_RATE_MAX_GLOBAL,
+_registration_rate_limiter = ratelimit.SlidingWindowLimiter(
+    DEFAULT_REGISTRATION_RATE_WINDOW_SECONDS,
+    DEFAULT_REGISTRATION_RATE_MAX_PER_DOMAIN,
+    DEFAULT_REGISTRATION_RATE_MAX_GLOBAL,
 )
+
+
+def configure_registration_rate_limiter(settings):
+    """Llamado una vez al arrancar la app (security/__init__.py:includeme) para que
+    el rate limiter de register_app refleje lo configurado en el .ini."""
+    global _registration_rate_limiter
+    window = ratelimit.positive_int_setting(
+        settings, 'fediverse.registration_rate_window_seconds', DEFAULT_REGISTRATION_RATE_WINDOW_SECONDS,
+    )
+    max_per_domain = ratelimit.limit_setting_or_none(settings, 'fediverse.registration_rate_max_per_domain')
+    max_global = ratelimit.limit_setting_or_none(settings, 'fediverse.registration_rate_max_global')
+    _registration_rate_limiter = ratelimit.SlidingWindowLimiter(window, max_per_domain, max_global)
 
 
 def _is_public_ip(ip_text):
@@ -129,6 +120,54 @@ def parse_handle(handle):
     return username, domain
 
 
+def discover_actor_url(username, domain):
+    """WebFinger (RFC 7033): handle -> URL del Actor de ActivityPub. Requiere Accept:
+    application/jrd+json (algunas instancias, p.ej. unam.social/Pleroma, dan 400 sin
+    ese header). None si falla; nunca bloquea el login por si solo."""
+    try:
+        response = _safe_request(
+            'GET', f'https://{domain}/.well-known/webfinger',
+            params={'resource': f'acct:{username}@{domain}'},
+            headers={'Accept': 'application/jrd+json'},
+        )
+        if response.status_code != 200:
+            return None
+        for link in response.json().get('links', []):
+            if link.get('rel') == 'self' and link.get('type') in AS2_CONTENT_TYPES:
+                href = link.get('href')
+                if href:
+                    return href
+        return None
+    except (FediverseError, ValueError, requests.RequestException):
+        return None
+
+
+def fetch_actor(actor_url):
+    """GET del documento del Actor (perfil nativo de ActivityPub). None si falla."""
+    try:
+        response = _safe_request('GET', actor_url, headers={'Accept': 'application/activity+json'})
+        if response.status_code != 200:
+            return None
+        return response.json()
+    except (FediverseError, ValueError, requests.RequestException):
+        return None
+
+
+def actor_oauth_endpoints(actor):
+    """Endpoints OAuth que el propio Actor declara (extension de Mastodon/Pleroma en
+    `endpoints`). Diccionario vacio si el Actor no los expone (p.ej. mastodon.social,
+    que solo declara sharedInbox) -- el llamador cae a las rutas conocidas."""
+    endpoints = (actor or {}).get('endpoints') or {}
+    result = {}
+    if endpoints.get('oauthRegistrationEndpoint'):
+        result['registration'] = endpoints['oauthRegistrationEndpoint']
+    if endpoints.get('oauthAuthorizationEndpoint'):
+        result['authorization'] = endpoints['oauthAuthorizationEndpoint']
+    if endpoints.get('oauthTokenEndpoint'):
+        result['token'] = endpoints['oauthTokenEndpoint']
+    return result
+
+
 def discover_nodeinfo(domain):
     """Best-effort: confirma que el dominio responde como servidor real. Nunca bloquea el login."""
     try:
@@ -162,8 +201,14 @@ def discover_oauth_metadata(domain):
 
 
 def choose_scope(oauth_metadata):
+    """Scope pedido al iniciar sesion: lectura de perfil + capacidad de publicar
+    (para compartir logros). scopes_supported suele faltar en instancias viejas
+    (p.ej. Pleroma no expone RFC 8414); en ese caso se pide igual, ya que
+    write:statuses/profile son estandar en cualquier instancia compatible con
+    la API de Mastodon."""
     supported = (oauth_metadata or {}).get('scopes_supported') or []
-    return SCOPE_MODERN if SCOPE_MODERN in supported else SCOPE_FALLBACK
+    profile_scope = SCOPE_PROFILE_MODERN if SCOPE_PROFILE_MODERN in supported else SCOPE_PROFILE_FALLBACK
+    return f'{profile_scope} {SCOPE_PUBLISH}'
 
 
 def supports_pkce(oauth_metadata):
@@ -171,10 +216,18 @@ def supports_pkce(oauth_metadata):
     return 'S256' in methods
 
 
-def register_app(domain, redirect_uri, scope, client_name='Honeycomb'):
-    _registration_rate_limiter.check_and_record(domain)
+def register_app(domain, redirect_uri, scope, client_name='Honeycomb', endpoint=None):
+    """endpoint: URL de registro descubierta en el Actor (AP C2S); si falta, cae a
+    la ruta de la API de Mastodon (/api/v1/apps), que Pleroma/Akkoma tambien implementan."""
+    url = endpoint or f'https://{domain}/api/v1/apps'
     try:
-        response = _safe_request('POST', f'https://{domain}/api/v1/apps', data={
+        _registration_rate_limiter.check_and_record(domain)
+    except ratelimit.RateLimitError as exc:
+        if exc.scope == 'global':
+            raise FediverseError('Demasiados registros de apps en este momento, intenta mas tarde') from exc
+        raise FediverseError(f"Demasiados intentos de registro para '{domain}', intenta mas tarde") from exc
+    try:
+        response = _safe_request('POST', url, data={
             'client_name': client_name,
             'redirect_uris': redirect_uri,
             'scopes': scope,
@@ -209,7 +262,10 @@ def states_match(expected, received):
     return hmac.compare_digest(expected, received)
 
 
-def build_authorize_url(domain, client_id, redirect_uri, state, scope, code_challenge=None):
+def build_authorize_url(domain, client_id, redirect_uri, state, scope, code_challenge=None, endpoint=None):
+    """endpoint: URL de autorizacion descubierta en el Actor (AP C2S); si falta, cae
+    a la ruta de la API de Mastodon (/oauth/authorize)."""
+    base = endpoint or f'https://{domain}/oauth/authorize'
     params = {
         'response_type': 'code',
         'client_id': client_id,
@@ -220,10 +276,13 @@ def build_authorize_url(domain, client_id, redirect_uri, state, scope, code_chal
     if code_challenge:
         params['code_challenge'] = code_challenge
         params['code_challenge_method'] = 'S256'
-    return f'https://{domain}/oauth/authorize?' + urllib.parse.urlencode(params)
+    return base + '?' + urllib.parse.urlencode(params)
 
 
-def exchange_code(domain, client_id, client_secret, redirect_uri, code, scope, code_verifier=None):
+def exchange_code(domain, client_id, client_secret, redirect_uri, code, scope, code_verifier=None, endpoint=None):
+    """endpoint: URL de intercambio de token descubierta en el Actor (AP C2S); si
+    falta, cae a la ruta de la API de Mastodon (/oauth/token)."""
+    url = endpoint or f'https://{domain}/oauth/token'
     data = {
         'grant_type': 'authorization_code',
         'client_id': client_id,
@@ -235,7 +294,7 @@ def exchange_code(domain, client_id, client_secret, redirect_uri, code, scope, c
     if code_verifier:
         data['code_verifier'] = code_verifier
     try:
-        response = _safe_request('POST', f'https://{domain}/oauth/token', data=data)
+        response = _safe_request('POST', url, data=data)
     except requests.RequestException as exc:
         raise FediverseError(f"No se pudo intercambiar el codigo con {domain}") from exc
     if response.status_code >= 400:
@@ -287,3 +346,19 @@ def account_to_drone_user(domain, account):
     icon = _image_url(account.get('avatar') or account.get('avatar_static') or account.get('icon'))
     background = _image_url(account.get('header') or account.get('header_static') or account.get('image'))
     return DroneUser(userid=userid, display_name=display_name, username=handle, icon=icon, background=background)
+
+
+def actor_to_drone_user(domain, actor):
+    """Mapea el documento del Actor (AS2) a DroneUser. Fuente primaria del perfil en
+    el flujo AP C2S; verify_credentials (account_to_drone_user) queda como respaldo
+    para instancias donde el Actor no trae `id` usable."""
+    userid = actor.get('id') or f"{domain}#{actor.get('preferredUsername', '')}"
+    username = actor.get('preferredUsername') or ''
+    handle = f'{username}@{domain}' if username else domain
+    display_name = actor.get('name') or username or handle
+    icon = _image_url(actor.get('icon'))
+    background = _image_url(actor.get('image'))
+    return DroneUser(
+        userid=userid, display_name=display_name, username=handle, icon=icon, background=background,
+        actor_url=actor.get('id'), inbox=actor.get('inbox'), outbox=actor.get('outbox'),
+    )

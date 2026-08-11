@@ -19,6 +19,19 @@ FAKE_FEDIVERSE_ACCOUNT = {
     'avatar': 'https://fake.fediverse.test/avatar.png',
     'header': 'https://fake.fediverse.test/header.png',
 }
+# Actor AS2 sin endpoints.oauth* -- ejercita el fallback a las rutas de la API de
+# Mastodon, igual que mastodon.social en la verificacion en vivo.
+FAKE_ACTOR = {
+    'id': 'https://fake.fediverse.test/users/tester',
+    'type': 'Person',
+    'preferredUsername': 'tester',
+    'name': 'Test User',
+    'icon': {'url': 'https://fake.fediverse.test/avatar.png'},
+    'image': {'url': 'https://fake.fediverse.test/header.png'},
+    'inbox': 'https://fake.fediverse.test/users/tester/inbox',
+    'outbox': 'https://fake.fediverse.test/users/tester/outbox',
+    'endpoints': {},
+}
 
 
 def pytest_addoption(parser):
@@ -91,21 +104,81 @@ def dummy_request(tm):
     return request
 
 @pytest.fixture
-def fediverse_stub(monkeypatch):
-    """Monkeypatches el modulo fediverse con una instancia fake bien portada, sin red real.
+def identity_bridge(monkeypatch):
+    """Puentea BeeHive.get_user/upsert_user/resolve_identity/link_identity/
+    unlink_identity/iter_identities por fuera de ZODB: el fixture testapp aborta
+    cada request en su propia transaccion (ver nota en
+    docs/comunicacion-videojuegos-api.md), asi que sin este puente una cuenta
+    creada en un request no existiria todavia para el siguiente. Compartido por
+    cualquier flujo de mas de un request, sea login por Fediverso, registro
+    local, o vincular ambos. Es solo para pruebas; el codigo de produccion
+    sigue usando ZODB en todo momento.
+    """
+    from honeycomb.models.beehive import BeeHive
 
-    Tambien puentea BeeHive.upsert_user/SecurityPolicy.load_identity por fuera de ZODB:
-    el fixture testapp aborta cada request en su propia transaccion (ver nota en
-    docs/comunicacion-videojuegos-api.md), asi que sin este puente un usuario logueado
-    en un request no existiria todavia para el siguiente. Es solo para pruebas; el
-    codigo de produccion sigue usando ZODB en todo momento.
+    users = {}
+    identities = {}
+
+    original_upsert_user = BeeHive.upsert_user
+
+    def patched_upsert_user(self, drone_user):
+        users[drone_user.userid] = drone_user
+        return original_upsert_user(self, drone_user)
+
+    original_get_user = BeeHive.get_user
+
+    def patched_get_user(self, userid):
+        if userid in users:
+            return users[userid]
+        return original_get_user(self, userid)
+
+    original_resolve_identity = BeeHive.resolve_identity
+
+    def patched_resolve_identity(self, key):
+        if key in identities:
+            return identities[key]
+        return original_resolve_identity(self, key)
+
+    original_link_identity = BeeHive.link_identity
+
+    def patched_link_identity(self, key, userid):
+        identities[key] = userid
+        return original_link_identity(self, key, userid)
+
+    original_unlink_identity = BeeHive.unlink_identity
+
+    def patched_unlink_identity(self, key):
+        identities.pop(key, None)
+        return original_unlink_identity(self, key)
+
+    def patched_iter_identities(self, userid):
+        for key, linked_userid in identities.items():
+            if linked_userid == userid:
+                yield key
+
+    monkeypatch.setattr(BeeHive, 'upsert_user', patched_upsert_user)
+    monkeypatch.setattr(BeeHive, 'get_user', patched_get_user)
+    monkeypatch.setattr(BeeHive, 'resolve_identity', patched_resolve_identity)
+    monkeypatch.setattr(BeeHive, 'link_identity', patched_link_identity)
+    monkeypatch.setattr(BeeHive, 'unlink_identity', patched_unlink_identity)
+    monkeypatch.setattr(BeeHive, 'iter_identities', patched_iter_identities)
+
+    return {'users': users, 'identities': identities}
+
+
+@pytest.fixture
+def fediverse_stub(monkeypatch, identity_bridge):
+    """Monkeypatches el modulo fediverse con una instancia fake bien portada, sin
+    red real. La persistencia entre requests la da identity_bridge; aqui solo se
+    puentea lo especifico del OAuth del Fediverso (set_oauth_app/get_oauth_app).
     """
     from honeycomb.models.beehive import BeeHive
     from honeycomb.security import fediverse
 
-    test_users = {}
     test_oauth_apps = {}
 
+    monkeypatch.setattr(fediverse, 'discover_actor_url', lambda username, domain: FAKE_ACTOR['id'])
+    monkeypatch.setattr(fediverse, 'fetch_actor', lambda actor_url: dict(FAKE_ACTOR))
     monkeypatch.setattr(fediverse, 'discover_nodeinfo', lambda domain: {'software': {'name': 'testodon'}})
     monkeypatch.setattr(fediverse, 'discover_oauth_metadata', lambda domain: {
         'scopes_supported': ['read:accounts'],
@@ -113,26 +186,13 @@ def fediverse_stub(monkeypatch):
     })
     monkeypatch.setattr(
         fediverse, 'register_app',
-        lambda domain, redirect_uri, scope, client_name='Honeycomb': ('fake-client-id', 'fake-client-secret'),
+        lambda domain, redirect_uri, scope, client_name='Honeycomb', endpoint=None: ('fake-client-id', 'fake-client-secret'),
     )
     monkeypatch.setattr(
         fediverse, 'exchange_code',
-        lambda domain, client_id, client_secret, redirect_uri, code, scope, code_verifier=None: 'fake-access-token',
+        lambda domain, client_id, client_secret, redirect_uri, code, scope, code_verifier=None, endpoint=None: 'fake-access-token',
     )
     monkeypatch.setattr(fediverse, 'fetch_account', lambda domain, access_token: dict(FAKE_FEDIVERSE_ACCOUNT))
-
-    original_upsert_user = BeeHive.upsert_user
-
-    def patched_upsert_user(self, drone_user):
-        test_users[drone_user.userid] = drone_user
-        return original_upsert_user(self, drone_user)
-
-    original_get_user = BeeHive.get_user
-
-    def patched_get_user(self, userid):
-        if userid in test_users:
-            return test_users[userid]
-        return original_get_user(self, userid)
 
     original_set_oauth_app = BeeHive.set_oauth_app
 
@@ -148,8 +208,6 @@ def fediverse_stub(monkeypatch):
             return test_oauth_apps[domain]
         return original_get_oauth_app(self, domain)
 
-    monkeypatch.setattr(BeeHive, 'upsert_user', patched_upsert_user)
-    monkeypatch.setattr(BeeHive, 'get_user', patched_get_user)
     monkeypatch.setattr(BeeHive, 'set_oauth_app', patched_set_oauth_app)
     monkeypatch.setattr(BeeHive, 'get_oauth_app', patched_get_oauth_app)
 
@@ -157,6 +215,10 @@ def fediverse_stub(monkeypatch):
         'domain': FAKE_FEDIVERSE_DOMAIN,
         'userid': FAKE_FEDIVERSE_ACCOUNT['uri'],
         'handle': f"tester@{FAKE_FEDIVERSE_DOMAIN}",
+        # Puente directo al DroneUser persistido (ver identity_bridge); util para
+        # que los tests inspeccionen campos que no se exponen via API (p.ej. el
+        # token cifrado) sin tener que abrir una ruta de depuracion insegura.
+        'get_stored_user': lambda: identity_bridge['users'].get(FAKE_FEDIVERSE_ACCOUNT['uri']),
     }
 
 
@@ -165,7 +227,7 @@ def login_as_fediverse_user(testapp, fediverse_stub):
     """Corre el flujo real de login (POST /api/v1/auth/login -> GET /api/v1/auth/callback) contra la instancia fake."""
     def _login(next_url='/'):
         login_page = testapp.get('/login', status=200)
-        csrf_token = login_page.form['csrf_token'].value
+        csrf_token = login_page.forms['fediverse-login-form']['csrf_token'].value
         start_resp = testapp.post('/api/v1/auth/login', {
             'handle': fediverse_stub['handle'],
             'csrf_token': csrf_token,
@@ -176,6 +238,76 @@ def login_as_fediverse_user(testapp, fediverse_stub):
         testapp.get('/api/v1/auth/callback', {'code': 'fake-code', 'state': state}, status=303)
         return fediverse_stub
     return _login
+
+
+@pytest.fixture
+def register_as_local_user(testapp, identity_bridge):
+    """Corre el registro real (GET /register -> POST /api/v1/auth/register) y deja
+    la sesion autenticada como esa cuenta nueva."""
+    def _register(username='alice', password='correct horse battery staple', next_url='/'):
+        page = testapp.get('/register', status=200)
+        csrf_token = page.forms['register-form']['csrf_token'].value
+        testapp.post('/api/v1/auth/register', {
+            'username': username, 'password': password, 'csrf_token': csrf_token, 'next': next_url,
+        }, status=303)
+        return {'username': username, 'password': password}
+    return _register
+
+
+@pytest.fixture
+def login_as_local_user(testapp):
+    """Corre el login local real (GET /login -> POST /api/v1/auth/local)."""
+    def _login(username, password, next_url='/'):
+        page = testapp.get('/login', status=200)
+        csrf_token = page.forms['local-login-form']['csrf_token'].value
+        return testapp.post('/api/v1/auth/local', {
+            'username': username, 'password': password, 'csrf_token': csrf_token, 'next': next_url,
+        }, status=303)
+    return _login
+
+
+@pytest.fixture
+def game_data_bridge(monkeypatch):
+    """Puentea BeeHive.get_game_data/merge_game_data por fuera de ZODB, igual que
+    identity_bridge hace con los usuarios: necesario para probar flujos que
+    abarcan mas de un request (otorgar un logro y despues compartirlo, o jugar
+    y despues vincular la cuenta a otra)."""
+    from honeycomb.models.beehive import BeeHive
+
+    store = {}
+    original_get_game_data = BeeHive.get_game_data
+    original_merge_game_data = BeeHive.merge_game_data
+
+    def patched_get_game_data(self, userid, nodeid, create=False):
+        key = (userid, nodeid)
+        if key in store:
+            return store[key]
+        if not create:
+            return None
+        record = original_get_game_data(self, userid, nodeid, create=True)
+        store[key] = record
+        return record
+
+    class _FakeGameDataHost:
+        def __init__(self, buckets):
+            self.__game_data__ = buckets
+
+    def patched_merge_game_data(self, from_userid, into_userid):
+        # Reusa la logica real de fusion operando sobre un host de mentiras cuyo
+        # __game_data__ refleja el store del bridge, y despues aplana el
+        # resultado de vuelta -- asi la regla de fusion no se duplica aqui.
+        buckets = {}
+        for (userid, nodeid), record in store.items():
+            buckets.setdefault(userid, {})[nodeid] = record
+        original_merge_game_data(_FakeGameDataHost(buckets), from_userid, into_userid)
+        store.clear()
+        for userid, bucket in buckets.items():
+            for nodeid, record in bucket.items():
+                store[(userid, nodeid)] = record
+
+    monkeypatch.setattr(BeeHive, 'get_game_data', patched_get_game_data)
+    monkeypatch.setattr(BeeHive, 'merge_game_data', patched_merge_game_data)
+    return store
 
 
 @pytest.fixture
