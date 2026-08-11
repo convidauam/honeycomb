@@ -14,6 +14,9 @@ Este es el primero de tres hilos de trabajo relacionados: (A, este documento) co
 | Interacciones previas con un contenido | `/api/v1/sipping/{nodeid}` | GET | solo lectura (campo `interactions`) |
 | Estadísticas del usuario en ese contenido | `/api/v1/sipping/{nodeid}` | GET/POST | lectura/escritura (campo `stats`) |
 | Preferencias del usuario en ese contenido | `/api/v1/sipping/{nodeid}` | GET/POST | lectura/escritura (campo `preferences`) |
+| Otorgar un logro (lo decide el juego, lo controla el servidor) | `/api/v1/sipping/{nodeid}/badges` | POST | escritura |
+| Logros del usuario en cualquier nodo | `/api/v1/achievements` | GET | solo lectura |
+| Publicar un logro al Fediverso del usuario | `/api/v1/share` | POST | escritura, opt-in explícito |
 
 Nombre de ruta alineado al contrato ya documentado en la wiki del proyecto ([convidauam/wikiabeja](https://github.com/convidauam/wikiabeja), `componentes/API.md`): `sipping`, no `games`.
 
@@ -30,13 +33,19 @@ Información de solo lectura del usuario autenticado.
 Respuesta 200:
 ```json
 {
-  "userid": "convida@unam.social",
+  "userid": "https://unam.social/users/convida",
   "displayname": "Convida UNAM",
   "username": "convida@unam.social",
   "icon": "/static/bumblebee-512x512.png",
-  "background": "/static/honeycomb.png"
+  "background": "/static/honeycomb.png",
+  "identities": [{"kind": "fediverse", "value": "https://unam.social/users/convida"}],
+  "can_share": true
 }
 ```
+
+- `userid` **no** es el handle: es el identificador canónico de la cuenta (URL del actor de ActivityPub si nació en el Fediverso, o un id opaco `local:<uuid>` si nació como cuenta local). Ver `docs/identidad-activitypub.md` para el modelo completo de identidad.
+- `identities`: credenciales vinculadas a esta cuenta (puede tener una de Fediverso, una de usuario/contraseña, o ambas si se vincularon desde `/cuenta`).
+- `can_share`: si hay lo necesario (identidad del Fediverso + token de publicación guardado) para que `POST /api/v1/share` funcione ahora mismo.
 
 Sin sesión: `401 {"error": "Unauthorized"}`.
 
@@ -63,9 +72,44 @@ Respuesta 200:
 - `interactions`: solo lectura. Cuenta cuántas veces el usuario ha hecho POST a este endpoint para este nodo. El servidor lo calcula; el cliente no puede fijarlo.
 - `stats`: lectura/escritura libre para el juego (puntajes, niveles, lo que necesite).
 - `preferences`: lectura/escritura libre (p. ej. dificultad). Versión mínima: se guarda igual que `stats`, sin validación de esquema todavía. Pensado para ligarse más adelante al sistema de rutas de interacción (`BeePath`); eso queda fuera de este alcance.
-- `badges`: reservado para logros; hoy siempre vacío, no hay endpoint para otorgarlos todavía.
+- `badges`: logros otorgados en este nodo (`[{id, title, icon, awarded_at}, ...]`). Solo lectura para el juego: se otorgan vía `POST /api/v1/sipping/{nodeid}/badges`, nunca desde este endpoint.
 
 Sin sesión: `401`.
+
+### POST /api/v1/sipping/{nodeid}/badges
+
+Otorga un logro al usuario autenticado para ese nodo. Es el juego quien decide *cuándo* otorgarlo (p. ej. al llegar a cierto puntaje), pero el otorgamiento en sí lo registra el servidor.
+
+Body:
+```json
+{"id": "high-score-100", "title": "Cien puntos", "icon": "🏆"}
+```
+
+`id` lo elige el juego (no es un UUID generado por el servidor: son los juegos los que saben qué logros existen). `title` es obligatorio; `icon` es opcional. Idempotente: otorgar el mismo `id` dos veces no lo duplica ni cambia su `awarded_at` original.
+
+Respuesta 200: el registro `sipping` completo, con el badge ya incluido en `badges` (mismo formato que `GET /api/v1/sipping/{nodeid}`).
+
+Errores: `401` sin sesión, `400` si falta `id`/`title` o `icon` no es texto.
+
+### GET /api/v1/achievements
+
+Todos los logros del usuario autenticado, en cualquier nodo (su vitrina).
+
+Respuesta 200:
+```json
+{"achievements": [{"id": "high-score-100", "title": "Cien puntos", "icon": "🏆", "awarded_at": "...", "nodeid": "juego-de-serpiente"}]}
+```
+
+### POST /api/v1/share
+
+Publica un logro ya otorgado como una nota en el Fediverso del usuario, vía ActivityPub C2S (su propio outbox) — nunca automático, siempre una acción explícita (del usuario o disparada por el juego con confirmación del usuario).
+
+Body:
+```json
+{"nodeid": "juego-de-serpiente", "badge_id": "high-score-100", "message": "opcional"}
+```
+
+Si `message` falta, se genera uno automático. Errores: `401` sin sesión, `400` si faltan campos o la cuenta no tiene forma de publicar (ver `can_share` en `/api/v1/me` para saber de antemano si conviene ofrecer este botón), `404` si el usuario nunca tiene ese logro en ese nodo, `502` si la instancia del Fediverso rechaza la publicación.
 
 ### POST /api/v1/sipping/{nodeid}
 
@@ -107,7 +151,7 @@ Nota sobre `sipping`: la ruta ya estaba documentada en la wiki, pero el borrador
 - Los datos de juego se leen/escriben siempre con el `userid` de la sesión, nunca con un `userid` de la URL o del body: no hay forma de leer o modificar datos de otro usuario (sin IDOR).
 - `interactions` y `badges` los controla exclusivamente el servidor.
 - `cors_origins=('*',)` se mantiene igual que en los endpoints existentes, asumiendo que los juegos se sirven desde el mismo origen (`/static/...`). Si algún juego se sirve desde otro dominio, hay que cambiar esto por una lista explícita de orígenes y habilitar credenciales en CORS; no está resuelto en este alcance.
-- Límite de tamaño: `stats`/`preferences` aceptan como máximo 100 claves por objeto, para evitar abuso.
+- Límite de tamaño: `stats`/`preferences` aceptan como máximo `honeycomb.max_game_payload_keys` claves por objeto (configurable por quien administra la instancia; vacío/0 = sin límite, que es el valor de fábrica).
 
 ## Persistencia
 
@@ -132,9 +176,12 @@ Los registros (`GameData`) se guardan en ZODB, dentro de la raíz (`BeeHive.__ga
 </script>
 ```
 
-- `Honeycomb.connect(nodeId?)`: llama a `/me`, devuelve una sesión con `.user`. Si no se pasa `nodeId`, intenta detectarlo de `?nodeid=` en la URL del juego o de `data-node-id` en su propio `<script>` tag.
+- `Honeycomb.connect(nodeId?)`: llama a `/me`, devuelve una sesión con `.user` (incluye `identities`/`can_share`, ver arriba). Si no se pasa `nodeId`, intenta detectarlo de `?nodeid=` en la URL del juego o de `data-node-id` en su propio `<script>` tag.
 - `hc.load(nodeId?)`: GET de `/sipping/{nodeid}`. Usa el `nodeId` de conexión si no se pasa uno explícito.
 - `hc.save(nodeId?, data)`: POST a `/sipping/{nodeid}`. También acepta `hc.save(data)` usando el `nodeId` de conexión.
+- `hc.awardBadge(nodeId?, badge)`: POST a `/sipping/{nodeid}/badges`, otorga un logro.
+- `hc.achievements()`: GET de `/achievements`, todos los logros del usuario en cualquier nodo.
+- `hc.share(nodeId, badgeId, message?)`: POST a `/share`, publica un logro al Fediverso. Revisar `hc.user.can_share` antes de mostrar el botón.
 
 Pendiente (fuera de este alcance): la plataforma todavía no inyecta automáticamente `?nodeid=` en la URL de cada juego embebido; por ahora el `nodeId` debe pasarse explícitamente a `connect`/`load`/`save`, o el juego debe construirse conociendo su propio nodeid.
 
@@ -155,7 +202,9 @@ const { data } = await client.getSippingData({ nodeid: 'juego-de-serpiente' });
 await client.saveSippingData({ nodeid: 'juego-de-serpiente' }, { stats: { highscore: 950 } });
 ```
 
-`operationId` por endpoint: `listHoneycombs`, `getHoneycomb`, `getNode`, `getMe`, `getDrone`, `getUserId`, `getSippingData`, `saveSippingData`.
+`operationId` por endpoint: `listHoneycombs`, `getHoneycomb`, `getNode`, `getMe`, `getDrone`, `getUserId`, `getSippingData`, `saveSippingData`, `awardBadge`, `getAchievements`, `shareAchievement`.
+
+Nota: el login (Fediverso, usuario/contraseña, registro, vincular/desvincular credenciales) **no** está en este spec a propósito — son formularios HTML con redirección (`303`), no una API JSON pensada para clientes programáticos. Un juego nunca inicia sesión por sí mismo: el jugador ya llega autenticado por haber entrado a la plataforma en el navegador. Ver `docs/identidad-activitypub.md`.
 
 **Nota de implementación:** el spec se mantiene a mano en `honeycomb/openapi.py`, no se genera con `cornice-swagger`. Se probó `cornice-swagger` (única versión existente, 1.0.1 de 2021) y sí corre con cornice 6.1/Python 3.12, pero genera **Swagger 2.0**, y `openapi-client-axios` requiere **OpenAPI 3.x** explícitamente (sin conversión automática). Mantener el spec a mano también evita depender de un paquete sin mantenimiento desde 2021 y da control total sobre los ejemplos de respuesta (cornice-swagger, sin esquemas `colander` en cada recurso, solo documenta `"UNDOCUMENTED RESPONSE"`). Verificado end-to-end con `openapi-client-axios` real contra el servidor local: generación del cliente, 401 sin sesión, y el flujo completo de `sipping` (GET default → POST → interactions incrementado).
 
@@ -166,6 +215,5 @@ await client.saveSippingData({ nodeid: 'juego-de-serpiente' }, { stats: { highsc
 ## Pendiente / fuera de alcance
 
 - Preferencias ligadas al sistema de rutas de interacción (`BeePath`): quedó como versión mínima (campo libre `preferences`), sin modelar `sequence`/`required`/`granted` todavía.
-- Otorgar `badges` desde algún endpoint (hoy el campo existe pero siempre vacío).
 - Inyección automática del `nodeid` del juego embebido desde la plataforma.
 - Integrar el SDK en un juego real de ejemplo (p. ej. Serpiente).
