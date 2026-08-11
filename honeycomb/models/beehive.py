@@ -4,7 +4,72 @@ from persistent.mapping import PersistentMapping
 from BTrees._OOBTree import OOBTree
 from persistent.list import PersistentList
 from .axes import CellBuilder
+import datetime
 import json, uuid
+
+
+def _utcnow_iso():
+    """Marca de tiempo UTC en formato ISO-8601 (serializable a JSON)."""
+    return datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+
+class GameData(Persistent):
+    """Datos persistentes de un videojuego para un usuario y un nodo.
+
+    interactions y badges: solo lectura para el juego (los controla el servidor).
+    stats y preferences: lectura/escritura.
+    """
+
+    def __init__(self, userid, nodeid):
+        self.userid = userid
+        self.nodeid = nodeid
+        self.interactions = 0
+        self.stats = PersistentMapping()
+        self.preferences = PersistentMapping()
+        self.badges = PersistentList()
+        now = _utcnow_iso()
+        self.first_seen = now
+        self.last_seen = now
+
+    def register_interaction(self):
+        """Suma una interacción (uso exclusivo del servidor) y refresca ``last_seen``."""
+        self.interactions += 1
+        self.last_seen = _utcnow_iso()
+
+    def merge_stats(self, stats, replace=False):
+        if replace:
+            self.stats.clear()
+        for key, value in stats.items():
+            self.stats[key] = value
+
+    def merge_preferences(self, preferences, replace=False):
+        if replace:
+            self.preferences.clear()
+        for key, value in preferences.items():
+            self.preferences[key] = value
+
+    def award_badge(self, badge_id, title, icon=None):
+        """Otorga un logro (controlado por el servidor). Idempotente: si el
+        usuario ya tiene este badge_id en este nodo, no lo duplica."""
+        for badge in self.badges:
+            if badge.id == badge_id:
+                return badge
+        badge = PollenBadge(badge_id, title, icon)
+        self.badges.append(badge)
+        self.last_seen = _utcnow_iso()
+        return badge
+
+    def to_dict(self):
+        return {
+            "userid": self.userid,
+            "nodeid": self.nodeid,
+            "interactions": self.interactions,
+            "stats": dict(self.stats),
+            "preferences": dict(self.preferences),
+            "badges": [badge.to_dict() for badge in self.badges],
+            "first_seen": self.first_seen,
+            "last_seen": self.last_seen,
+        }
 
 class BeeHive(PersistentMapping):
     """A container of Honeycombs. This represents the top-level hierarchy which gives entry to honeycombs. It should
@@ -19,6 +84,143 @@ class BeeHive(PersistentMapping):
         self.title = "BeeHive Root"
         self.__nodes__ = OOBTree()
         self.__edges__ = OOBTree()
+        self.__game_data__ = OOBTree()
+        self.__users__ = OOBTree()
+        self.__oauth_apps__ = OOBTree()
+        self.__identities__ = OOBTree()
+
+    # datos de videojuegos (GameData): acceso homologado por usuario + nodo
+    def get_game_data(self, userid, nodeid, create=False):
+        """Obtiene el GameData de (userid, nodeid). Si no existe y create=True, lo crea."""
+        if not hasattr(self, "__game_data__"):
+            # BeeHive persistido antes de añadir este atributo.
+            self.__game_data__ = OOBTree()
+        user_bucket = self.__game_data__.get(userid)
+        if user_bucket is None:
+            if not create:
+                return None
+            user_bucket = OOBTree()
+            self.__game_data__[userid] = user_bucket
+        record = user_bucket.get(nodeid)
+        if record is None and create:
+            record = GameData(userid, nodeid)
+            user_bucket[nodeid] = record
+        return record
+
+    def iter_user_badges(self, userid):
+        """Genera (nodeid, PollenBadge) para cada logro del usuario, en cualquier nodo."""
+        if not hasattr(self, "__game_data__"):
+            return
+        user_bucket = self.__game_data__.get(userid)
+        if not user_bucket:
+            return
+        for nodeid, record in user_bucket.items():
+            for badge in record.badges:
+                yield nodeid, badge
+
+    # usuarios autenticados vía identidad del Fediverso, keyed por userid canónico
+    def get_user(self, userid):
+        if not hasattr(self, "__users__"):
+            self.__users__ = OOBTree()
+        return self.__users__.get(userid)
+
+    def upsert_user(self, drone_user):
+        """Guarda o actualiza un DroneUser ya construido, indexado por su userid."""
+        if not hasattr(self, "__users__"):
+            self.__users__ = OOBTree()
+        self.__users__[drone_user.userid] = drone_user
+        return drone_user
+
+    # credenciales OAuth registradas por instancia (dominio del Fediverso)
+    def get_oauth_app(self, domain):
+        if not hasattr(self, "__oauth_apps__"):
+            self.__oauth_apps__ = OOBTree()
+        return self.__oauth_apps__.get(domain)
+
+    def set_oauth_app(self, domain, client_id, client_secret):
+        if not hasattr(self, "__oauth_apps__"):
+            self.__oauth_apps__ = OOBTree()
+        self.__oauth_apps__[domain] = PersistentMapping({"client_id": client_id, "client_secret": client_secret})
+        return self.__oauth_apps__[domain]
+
+    # identidades: varias credenciales (Fediverso, contraseña local) pueden
+    # apuntar a la misma cuenta. Clave con namespace explicito: 'fediverse:<actor_url>'
+    # o 'password:<username>'. El userid primario de la cuenta no cambia por esto;
+    # este indice solo dice a que userid resolver cada credencial.
+    def resolve_identity(self, key):
+        if not hasattr(self, "__identities__"):
+            self.__identities__ = OOBTree()
+        return self.__identities__.get(key)
+
+    def link_identity(self, key, userid):
+        if not hasattr(self, "__identities__"):
+            self.__identities__ = OOBTree()
+        self.__identities__[key] = userid
+
+    def unlink_identity(self, key):
+        if not hasattr(self, "__identities__"):
+            self.__identities__ = OOBTree()
+        if key in self.__identities__:
+            del self.__identities__[key]
+
+    def iter_identities(self, userid):
+        if not hasattr(self, "__identities__"):
+            return
+        for key, linked_userid in self.__identities__.items():
+            if linked_userid == userid:
+                yield key
+
+    def merge_game_data(self, from_userid, into_userid):
+        """Fusiona el progreso de from_userid dentro de into_userid al vincular dos
+        credenciales de la misma persona. Regla por nodo: si into_userid no tiene
+        registro para ese nodo, se copia el de from_userid (con record.userid
+        reescrito); si ambos tienen registro, los badges se unen por id
+        conservando su awarded_at original, interactions se suma, first_seen/
+        last_seen toman el minimo/maximo, y stats/preferences los conserva
+        into_userid tal cual (son el unico campo ambiguo: no hay forma correcta
+        de sumarlos o elegir uno sin contexto del juego).
+
+        No borra nada: el bucket original de from_userid se deja intacto, solo
+        queda inalcanzable por la API. El llamador debe invocar esto una sola
+        vez por vinculacion nueva -- no es idempotente (llamarlo dos veces para
+        el mismo par sumaria interactions dos veces).
+        """
+        if from_userid == into_userid:
+            return
+        if not hasattr(self, "__game_data__"):
+            return
+        from_bucket = self.__game_data__.get(from_userid)
+        if not from_bucket:
+            return
+        into_bucket = self.__game_data__.get(into_userid)
+        if into_bucket is None:
+            into_bucket = OOBTree()
+            self.__game_data__[into_userid] = into_bucket
+
+        for nodeid, source in from_bucket.items():
+            target = into_bucket.get(nodeid)
+            if target is None:
+                copy = GameData(into_userid, nodeid)
+                copy.interactions = source.interactions
+                copy.stats.update(source.stats)
+                copy.preferences.update(source.preferences)
+                for badge in source.badges:
+                    clone = PollenBadge(badge.id, badge.title, badge.icon)
+                    clone.awarded_at = badge.awarded_at
+                    copy.badges.append(clone)
+                copy.first_seen = source.first_seen
+                copy.last_seen = source.last_seen
+                into_bucket[nodeid] = copy
+            else:
+                existing_ids = {badge.id for badge in target.badges}
+                for badge in source.badges:
+                    if badge.id not in existing_ids:
+                        clone = PollenBadge(badge.id, badge.title, badge.icon)
+                        clone.awarded_at = badge.awarded_at
+                        target.badges.append(clone)
+                target.interactions += source.interactions
+                target.first_seen = min(target.first_seen, source.first_seen)
+                target.last_seen = max(target.last_seen, source.last_seen)
 
     # gestión de nodos y aristas
     def add_node(self, node, recurse=False):
@@ -473,12 +675,19 @@ class CellWebContent(CellLeaf):
         return self.icon
 
 
-class PollenBadge:
-    def __init__(self, id: uuid.UUID, name: str, title: str, icon: str):
-        self.id = id
-        self.name = name
+class PollenBadge(Persistent):
+    """Un logro otorgado a un usuario para un nodo especifico. `id` lo elige el
+    juego (p.ej. 'high-score-100'), no es un UUID generado por el servidor:
+    son los juegos los que saben que logros existen."""
+
+    def __init__(self, badge_id, title, icon=None):
+        self.id = badge_id
         self.title = title
         self.icon = icon
+        self.awarded_at = _utcnow_iso()
+
+    def to_dict(self):
+        return {"id": self.id, "title": self.title, "icon": self.icon, "awarded_at": self.awarded_at}
 
 
 class BeePath:

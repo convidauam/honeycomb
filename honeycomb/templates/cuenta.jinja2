@@ -1,0 +1,78 @@
+{% extends "layout.jinja2" %}
+
+{% block header %}
+    <div class="header row">
+        <div class="col text-center">
+             <h2><span class="font-semi-bold">Tu cuenta</span></h2>
+        </div>
+    </div>
+{% endblock %}
+
+{% block content %}
+<div class="content row">
+    <div class="col-md-8">
+      {% if error %}
+      <div class="alert alert-danger">{{ error }}</div>
+      {% endif %}
+
+      <p class="text-muted">
+        <small>
+          Cada credencial de aqui abajo da acceso a la misma cuenta y al mismo progreso. Entrar por el
+          Fediverso o por usuario/contraseña sin vincularlos primero crea (o entra a) cuentas distintas.
+        </small>
+      </p>
+
+      <h3>Credenciales vinculadas</h3>
+      <ul>
+        {% for identity_key in identities %}
+          <li>
+            {% if identity_key.startswith('fediverse:') %}
+              Fediverso: {{ identity_key[10:] }}
+            {% elif identity_key.startswith('password:') %}
+              Usuario y contraseña: {{ identity_key[9:] }}
+            {% else %}
+              {{ identity_key }}
+            {% endif %}
+            {% if identities|length > 1 %}
+              <form method="post" action="/api/v1/auth/unlink" style="display:inline" id="unlink-form-{{ loop.index }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="identity_key" value="{{ identity_key }}">
+                <input type="submit" class="btn btn-xs btn-default" value="Desvincular">
+              </form>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+
+      <h3>Vincular el Fediverso</h3>
+      <form method="post" action="/api/v1/auth/login" id="link-fediverse-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="next" value="/cuenta">
+        <div class="form-group">
+          <label for="handle">Tu usuario del Fediverso</label>
+          <input type="text" class="form-control" id="handle" name="handle" placeholder="usuario@instancia.social" required>
+        </div>
+        <input type="submit" class="btn btn-primary" value="Vincular">
+      </form>
+
+      {% if local_accounts_enabled %}
+      <h3>Vincular usuario y contraseña</h3>
+      {% if has_password %}
+      <p class="text-muted"><small>Ya tienes una contraseña vinculada. Vincular una nueva la reemplaza.</small></p>
+      {% endif %}
+      <form method="post" action="/api/v1/auth/link/password" id="link-password-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="form-group">
+          <label for="username">Usuario</label>
+          <input type="text" class="form-control" id="username" name="username" required>
+        </div>
+        <div class="form-group">
+          <label for="password">Contraseña</label>
+          <input type="password" class="form-control" id="password" name="password" required>
+        </div>
+        <input type="submit" class="btn btn-primary" value="Vincular">
+      </form>
+      {% endif %}
+    </div>
+</div>
+{% endblock content %}

@@ -11,10 +11,45 @@
 {% block content %}
 <div class="content row">
     <div class="col-md-8">
+      {% if error %}
+      <div class="alert alert-danger">{{ error }}</div>
+      {% endif %}
       {% if login_form %}
          {{ login_form|safe }}
       {% else %}
-          <form><input type="submit" value="login"></form>
+          <form method="post" action="/api/v1/auth/login" id="fediverse-login-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="next" value="{{ next_url }}">
+            <div class="form-group">
+              <label for="handle">Tu usuario del Fediverso</label>
+              <input type="text" class="form-control" id="handle" name="handle" placeholder="usuario@instancia.social" required>
+            </div>
+            <input type="submit" class="btn btn-primary" value="Iniciar sesión">
+          </form>
+
+          <hr>
+
+          <form method="post" action="/api/v1/auth/local" id="local-login-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="next" value="{{ next_url }}">
+            <div class="form-group">
+              <label for="username">Usuario</label>
+              <input type="text" class="form-control" id="username" name="username" required>
+            </div>
+            <div class="form-group">
+              <label for="password">Contraseña</label>
+              <input type="password" class="form-control" id="password" name="password" required>
+            </div>
+            <input type="submit" class="btn btn-default" value="Iniciar sesión con usuario y contraseña">
+          </form>
+
+          <p class="text-muted">
+            <small>
+              El Fediverso y usuario/contraseña son cuentas distintas: entrar por uno u otro no te da
+              acceso al progreso del otro, a menos que las vincules desde <a href="/cuenta">tu cuenta</a>.
+              ¿No tienes cuenta? <a href="/register">Regístrate</a>.
+            </small>
+          </p>
       {% endif %}
       {% if appstruct %}
       {{ appstruct }}

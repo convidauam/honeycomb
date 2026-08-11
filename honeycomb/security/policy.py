@@ -1,14 +1,11 @@
 from pyramid.authentication import AuthTktCookieHelper
 from pyramid.request import RequestLocalCache
 from pyramid.security import Allowed, Denied
+from pyramid_zodbconn import get_connection
 
+from ..models import appmaker
 from ..models.axes import CellBuilder
-from ..models.users import DroneUser
 
-
-USERS = {
-    'convida@unam.social': DroneUser('convida@unam.social', 'Convida UNAM', 'convida@unam.social', '/static/bumblebee-512x512.png', '/static/honeycomb.png'),
-}
 
 class SecurityPolicy:
     def __init__(self, secret):
@@ -17,18 +14,13 @@ class SecurityPolicy:
 
     def load_identity(self, request):
         identity = self.authtkt.identify(request)
-        
+
         if identity is None:
             return None
 
         userid = identity['userid']
-
-        if userid not in USERS:
-            return None
-
-        identity = USERS[userid]
-
-        return identity
+        root = appmaker(get_connection(request).root())
+        return root.get_user(userid)
 
     def identity(self, request):
         return self.identity_cache.get_or_create(request)
@@ -52,7 +44,7 @@ class SecurityPolicy:
             return Denied("You need to sign in to view this contents")
         elif permission == 'read':
             if CellBuilder.has_access(context, identity):
-                return Allowed('Access granted for user %s', identity['username'])
+                return Allowed('Access granted for user %s', identity.username)
             else:
                 return Denied("You are not allowed to access this resource")
         else:
