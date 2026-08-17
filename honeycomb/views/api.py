@@ -22,7 +22,7 @@ class HoneycombResource:
             honeycombs.append({
                 'id': hc.__name__,
                 'title': hc.title,
-                'icon': hc.icon,
+                'icon': self.request.resource_url(hc) + "@@icon",
             })
         return {'honeycombs': honeycombs}
 
@@ -40,7 +40,7 @@ class HoneycombResource:
                 "label": hc.title,
                 "themeColor": "root",
                 "url": self.request.resource_url(hc),
-                "icon": hc.icon,
+                "icon": self.request.resource_url(hc) + "@@icon",
             },
             "position": {"x": 0, "y": 0},  # en el centro
             "type": "custom",
@@ -64,7 +64,7 @@ class HoneycombResource:
                     "label": cell.title,
                     "themeColor": "default",
                     "url": self.request.resource_url(cell),
-                    "icon": getattr(cell, 'icon', None),
+                    "icon": getattr(cell, 'icon', None) and self.request.resource_url(cell) + "@@icon",
                 },
                 "position": {"x": x, "y": y},
                 "type": "custom",
@@ -93,7 +93,7 @@ class HoneycombResource:
                     "label": cell.title,
                     "themeColor": "default",
                     "url": self.request.resource_url(cell),
-                    "icon": cell.icon,
+                    "icon": self.request.resource_url(cell) + "@@icon",
                 },
             })
 
@@ -131,7 +131,7 @@ class NodeResource:
             "label": getattr(node, "title", ""),
             "contents": getattr(node, "contents", ""),
             "url": self.request.resource_url(node),
-            "iconUrl": getattr(node, "icon", None),
+            "iconUrl": self.request.resource_url(node) + "@@icon",
             "nodes": [],
             "edges": [],
             "featured": [],
@@ -145,7 +145,7 @@ class NodeResource:
         elif isinstance(node, CellLeaf):
             data["type"] = "leaf"
             if isinstance(node, CellWebContent):
-                data["type"] = "webcontent"
+                data["type"] = "pagina_web"
                 data["href"] = node.href
         else:
             data["type"] = "custom"
@@ -162,6 +162,7 @@ class NodeResource:
                     'data': {'label': getattr(child, 'title', '')},
                     'label': getattr(child, 'title', ''),
                     'url': self.request.resource_url(child),
+                    'iconUrl': self.request.resource_url(child) + "@@icon",
                     'position': position,
                 })
             # data["nodes"] = [{'id': str(child.id), 'label': getattr(child, 'title', ''), 'url': self.request.resource_url(child)} for child in node.nodes]
@@ -179,7 +180,7 @@ class NodeResource:
                     "data": {"label": getattr(child, "title", "")},
                     "label": getattr(child, "title", ""),
                     "url": self.request.resource_url(child),
-                    "iconUrl": getattr(child, "icon", None),
+                    "iconUrl": self.request.resource_url(child) + "@@icon",
                     "position": position,
                 })
 

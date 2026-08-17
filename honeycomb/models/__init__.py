@@ -153,7 +153,7 @@ def appmaker(zodb_root):
 
         abejas = Honeycomb('abejas', "Convida Abejas")
 
-        with open("honeycomb/static/assets/paisaje_tematico_coords.json") as f:
+        with open("honeycomb/static/assets/paisaje_tematico_coords_icons.json") as f:
             mapa = HoneycombGraph.from_json(f.read(), name="mapa-sitio", title="Paisaje temático")
 
         mapa.__parent__ = abejas
@@ -166,6 +166,7 @@ def appmaker(zodb_root):
             grafo = HoneycombGraph.from_json(f.read(), name="ciclo-reproductivo", title="Ciclo reproductivo")
 
         grafo.__parent__ = reproduccion
+        grafo.icon = CellIcon.from_filesystem('honeycomb/static/assets/Ciclo Reproductivo.png')
         reproduccion[grafo.__name__] = grafo
         app_root.add_node(grafo, recurse=True)
         abejas.toggle_featured(grafo)
@@ -178,12 +179,14 @@ def appmaker(zodb_root):
         mecanismos = mapa["mecanismos-de-libado"]
         libado = CellWebContent('libado', title="Libado", url="https://convida.cua.uam.mx/libado/")
         libado.__parent__ = mecanismos
+        libado.icon = CellIcon.from_filesystem('honeycomb/static/assets/Mecanismos de libado.png')
         mecanismos['libado'] = libado
         abejas.toggle_featured(libado)
         app_root.add_node(libado)
 
         abejopolis = CellWebContent('abejopolis', title="Abejópolis", url="https://convida.cua.uam.mx/abejopolis/")
         abejopolis.__parent__ = abejas
+        abejopolis.icon = CellIcon.from_filesystem('honeycomb/static/assets/Abejopolis.png')
         abejas['abejopolis'] = abejopolis
         abejas.toggle_featured(abejopolis)
         app_root.add_node(abejopolis)
