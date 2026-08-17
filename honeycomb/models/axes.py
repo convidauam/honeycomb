@@ -6,6 +6,7 @@ from persistent import Persistent
 from pyramid import traversal
 import numpy as np
 from scipy import spatial
+from sklearn.manifold import MDS
 
 
 AXES_LABELS_DEFAULT = 'problem_solving', 'integration', 'abstract_thinking'
@@ -44,6 +45,7 @@ class HoneycombExplorer(Persistent):
         self.__hc__ = honeycomb
         self.names = []
         self.matrix = None
+        self.coords_2d= None
 
     def update_matrix(self):
         "Iterates through the beehive nodes and recalculates distance matrix based on the axes values of nodes belonging to the chosen Honeycomb"
@@ -58,3 +60,11 @@ class HoneycombExplorer(Persistent):
                     coords.append(node.__axes__)
         self.matrix = spatial.distance_matrix(np.array(coords), np.array(coords))
         self.names = names
+    def reduction_2d(self, components=2):
+        "This use the MDS dimentional reduction trough sklearn function defined"
+        if self.matrix is None:
+            self.update_matrix()
+        reduction= MDS(n_components=components, dissimilarity='precomputed', random_state=42)
+        "In reduction function precomputed indicates the property of matrix distances and no the nodes points in the space, while we use the random state to preserve the correct position of all nodes"
+        self.coords_2d = reduction.fit_transform(self.update_matrix)
+        return self.coords_2d
