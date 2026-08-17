@@ -3,8 +3,9 @@ from persistent import Persistent
 from persistent.mapping import PersistentMapping
 from BTrees._OOBTree import OOBTree
 from persistent.list import PersistentList
+from ZODB.blob import Blob
 from .axes import CellBuilder
-import json, uuid
+import json, uuid, os
 
 class BeeHive(PersistentMapping):
     """A container of Honeycombs. This represents the top-level hierarchy which gives entry to honeycombs. It should
@@ -258,6 +259,22 @@ class HoneycombGraph(PersistentMapping):
             node_obj.id = json_id
             node_obj.__parent__ = graph
 
+            if "iconUrl" in node_data["data"]:
+                node_obj.icon = CellIcon.from_filesystem(node_data["data"]["iconUrl"])
+                # if os.path.exists(node_data["data"]["iconUrl"]):
+                #     icon_data = Blob()
+                #     with open(node_data["data"]["iconUrl"], "rb") as source:
+                #         with icon_data.open('w') as target:
+                #             while True:
+                #                 b = source.read(4096)
+                #                 if not b:
+                #                     break
+                #                 else:
+                #                     target.write(b)
+                #     icon = CellIcon(icon_data)
+                #     node_obj.icon = icon
+
+
             node_coordinates = node_data.get("coordinates", None)
             if node_coordinates:
                 builder.fill_cell(node_obj, **node_coordinates)
@@ -390,20 +407,32 @@ class StaticCell(CellLeaf):
         self.icon = None
 
 
-class CellIcon(CellLeaf):
+class CellIcon(Persistent):
     """A BeeHive cell icon."""
-    def __init__(self, name, title="", icon=None):
-        super().__init__(self)
-        self.__name__ = name
-        self.title = title
-        self.icon = icon
+    def __init__(self, blob):
+        super().__init__()
+        self.blob = blob
 
     def set_icon(self, icon):
         self.icon = icon
 
     def get_icon(self):
         return self.icon
-    
+
+    @classmethod
+    def from_filesystem(cls, path):
+        if os.path.exists(path):
+            icon_data = Blob()
+            with open(path, "rb") as source:
+                with icon_data.open('w') as target:
+                    while True:
+                        b = source.read(4096)
+                        if not b:
+                            break
+                        else:
+                            target.write(b)
+                    return cls(icon_data)
+
 
 class CellText(CellLeaf):
     def __init__(self, name, contents, title="", icon=None):

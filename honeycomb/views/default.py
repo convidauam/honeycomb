@@ -1,8 +1,12 @@
 from pyramid.view import view_config
-from pyramid.httpexceptions import HTTPSeeOther, HTTPFound
+from pyramid.httpexceptions import HTTPSeeOther, HTTPFound, HTTPNotFound
+from pyramid.response import FileIter
 from pyramid_storage.exceptions import FileNotAllowed
 from pyramid_storage import extensions
 from pyramid import traversal
+
+from ZODB.blob import Blob
+import os.path
 
 from ..models import *
 
@@ -170,11 +174,29 @@ def edit_cell_webcontent(context, request):
         return HTTPFound(location=request.resource_url(context))
     return {"cell": context}
 
-@view_config(context=CellIcon, renderer='honeycomb:templates/cell.jinja2')
-def iconcell(request):
-    title = getattr(request.context, 'title', "Wild cell")
-    return {'project': 'Honeycomb', 'title': title, 'contents': request.context.icon}
+# @view_config(context=CellIcon, renderer='honeycomb:templates/cell.jinja2')
+# def iconcell(request):
+#     title = getattr(request.context, 'title', "Wild cell")
+#     return {'project': 'Honeycomb', 'title': title, 'contents': request.context.icon}
 
+# @view_config(context=CellIcon)
+# def cellicon_view(request):
+#     icon = request.context
+#     response = request.response
+#     response.content_type = "image/png"
+#     response.app_iter = FileIter(icon.icon.open("r"))
+#     return response
+
+@view_config(context=Persistent, name="icon")
+def icon_view(request):
+    icon = request.context.icon
+    if not icon:
+        return HTTPNotFound()
+    response = request.response
+    response.content_type = "image/png"
+    response.app_iter = FileIter(icon.blob.open("r"))
+    return response
+    
 
 @view_config(context=CellIcon, name='CreateNew', renderer='templates/view_cell_icon.jinja2')
 def view_cell_icon(context, request):
