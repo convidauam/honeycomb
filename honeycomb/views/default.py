@@ -1,5 +1,5 @@
 from pyramid.view import view_config
-from pyramid.httpexceptions import HTTPSeeOther, HTTPFound, HTTPBadRequest
+from pyramid.httpexceptions import HTTPSeeOther, HTTPFound, HTTPBadRequest, HTTPNotFound
 from pyramid_storage.exceptions import FileNotAllowed
 from pyramid_storage import extensions
 from pyramid import traversal
@@ -81,13 +81,7 @@ def audio_create_view(request):
 
     source = request.POST['data'].file
 
-    # max 100 mb
     max_size = int(request.registry.settings.get('beehive_max_audio_size', 104857600))
-    source.seek(0, 2)
-    if source.tell() > max_size:
-        request.response.status = 400
-        return {'error': 'El archivo debe ser de maximo 100 mb'}
-    source.seek(0) 
 
     parent_uuid = fields['parent']
     title = fields['title']
@@ -106,13 +100,16 @@ def audio_create_view(request):
 
     audio = Blob()
     length = 0
-    source.seek(0)
 
     with audio.open('w') as target:
         while True:
             b = source.read(4096)
             if b:
-                target.write(b)
+                length += target.write(b)
+                if length > max_size:
+                    request.response.status = 400
+                    max_size_mb = max_size // (1024 * 1024)
+                    return {'error': f'El archivo debe ser de maximo {max_size_mb} mb'}
             else:
                 break
 
@@ -240,11 +237,20 @@ def edit_cell_webcontent(context, request):
         return HTTPFound(location=request.resource_url(context))
     return {"cell": context}
 
-@view_config(context=CellIcon, renderer='honeycomb:templates/cell.jinja2')
-def iconcell(request):
-    title = getattr(request.context, 'title', "Wild cell")
-    return {'project': 'Honeycomb', 'title': title, 'contents': request.context.icon}
+#@view_config(context=CellIcon, renderer='honeycomb:templates/cell.jinja2')
+#def iconcell(request):
+#    title = getattr(request.context, 'title', "Wild cell")
+#    return {'project': 'Honeycomb', 'title': title, 'contents': request.context.icon}
 
+@view_config(context=Persistent, name="icon")
+def icon_view(request):
+    icon = request.context.icon
+    if not icon:
+        return HTTPNotFound()
+    response = request.response
+    response.content_type = "image/png"
+    response.app_iter = FileIter(icon.blob.open("r"))
+    return response
 
 @view_config(context=CellIcon, name='CreateNew', renderer='templates/view_cell_icon.jinja2')
 def view_cell_icon(context, request):
@@ -295,7 +301,7 @@ def audio_metadata_view(request):
     else:
         title = cell.title
 
-    duracion = getattr(cell, 'length', getattr(cell, 'lenght', 0.0))
+    duracion = getattr(cell, 'length', 0.0)
 
     return {
         'title': title,
@@ -347,7 +353,7 @@ def image_stream_view(request):
     cell = request.context
     response = request.response
     response.content_type = getattr(cell, 'mime', 'image/jpeg')
-    response.app_iter = FileIter(cell.data.open("r"))
+    response.app_iter = FileIter(cell.blob.open("r"))
     return response
 
 
@@ -448,25 +454,30 @@ def image_create_view(request):
         mimetype = request.POST.get('mimetype', 'image/jpeg')
         parent_uuid = request.POST.get('parent')
 
-        # 10 MB para imágenes (10485760 bytes)
         max_size = int(request.registry.settings.get('beehive_max_image_size', 10485760))
-        source.seek(0, 2)
-        if source.tell() > max_size:
-            request.response.status = 400
-            return {'error': 'La imagen debe ser de máximo 10 MB'}
-        source.seek(0) 
 
         root = request.context.__parent__
         parent = root.__nodes__.get(parent_uuid, request.context)
 
         archivo_blob = Blob()
+        length = 0
         with archivo_blob.open('w') as target:
             while True:
                 b = source.read(4096)
-                if not b: break
-                target.write(b)
+                if not b: 
+                    break
+                length += target.write(b)
 
-        cell = CellIcon(name="", data=archivo_blob, mime=mimetype, title=title)
+                if length > max_size:
+                    request.response.status = 400
+                    max_size_mb = max_size // (1024 * 1024)
+                    return {'error': f'La imagen debe ser de máximo {max_size_mb} MB'}
+
+        cell = CellIcon(archivo_blob)
+        cell.id = uuid.uuid4()
+        cell.__name__ = str(cell.id)
+        cell.title = title
+        cell.mimetype = mimetype
         cell.__parent__ = parent
         parent[cell.__name__] = cell
 
@@ -490,23 +501,24 @@ def animation_create_view(request):
         mimetype = request.POST.get('mimetype', 'image/gif')
         parent_uuid = request.POST.get('parent')
 
-        # 20 MB para gif (20971520 bytes)
         max_size = int(request.registry.settings.get('beehive_max_animation_size', 20971520))
-        source.seek(0, 2)
-        if source.tell() > max_size:
-            request.response.status = 400
-            return {'error': 'El gif debe ser de máximo 20 MB'}
-        source.seek(0) 
 
         root = request.context.__parent__
         parent = root.__nodes__.get(parent_uuid, request.context)
 
         archivo_blob = Blob()
+        length = 0
         with archivo_blob.open('w') as target:
             while True:
                 b = source.read(4096)
-                if not b: break
-                target.write(b)
+                if not b: 
+                    break
+                length += target.write(b)
+
+                if length > max_size:
+                    request.response.status = 400
+                    max_size_mb = max_size // (1024 * 1024)
+                    return {'error': f'El gif debe ser de máximo {max_size_mb} MB'}
 
         cell = CellAnimation(name="", data=archivo_blob, mime=mimetype, title=title)
         cell.__parent__ = parent
@@ -535,13 +547,22 @@ def admin_update_audio(context, request):
     if 'data' in request.POST and hasattr(request.POST['data'], 'file'):
         source = request.POST['data'].file
         context.mime = request.POST.get('mimetype', context.mime)
-        
+
+        max_size = int(request.registry.settings.get('beehive_max_audio_size', 104857600))
         archivo_blob = Blob()
+        length = 0
+
         with archivo_blob.open('w') as target:
             while True:
                 b = source.read(4096)
-                if not b: break
-                target.write(b)
+                if not b: 
+                    break
+                length += target.write(b)
+
+                if length > max_size:
+                    request.response.status = 400
+                    max_size_mb = max_size // (1024 * 1024)
+                    return {'error': f'El archivo debe ser de máximo {max_size_mb} MB'}
         context.data = archivo_blob
 
     return {'status': 'actualizado', 'id': str(context.id)}
@@ -567,20 +588,22 @@ def admin_update_icon(context, request):
         mimetype = request.POST.get('mimetype', context.mime)
 
         max_size = int(request.registry.settings.get('beehive_max_image_size', 10485760))
-        source.seek(0, 2)
-        if source.tell() > max_size:
-            request.response.status = 400
-            return {'error': 'La imagen debe ser de máximo 10 MB'}
-        source.seek(0) 
-        
         archivo_blob = Blob()
+        length = 0
+
         with archivo_blob.open('w') as target:
             while True:
                 b = source.read(4096)
-                if not b: break
-                target.write(b)
+                if not b: 
+                    break
+                length += target.write(b)
                 
-        context.data = archivo_blob
+                if length > max_size:
+                    request.response.status = 400
+                    max_size_mb = max_size // (1024 * 1024)
+                    return {'error': f'La imagen debe ser de máximo {max_size_mb} MB'}
+                
+        context.blob = archivo_blob
         context.mime = mimetype
         
     return {'status': 'actualizado', 'id': str(context.id)}
@@ -608,20 +631,21 @@ def admin_update_animation(context, request):
         source = request.POST['data'].file
         mimetype = request.POST.get('mimetype', context.mime)
         
-        # Validación de tamaño (Max 20 MB)
         max_size = int(request.registry.settings.get('beehive_max_animation_size', 20971520))
-        source.seek(0, 2)
-        if source.tell() > max_size:
-            request.response.status = 400
-            return {'error': 'El gif debe ser de máximo 20 MB'}
-        source.seek(0) 
-        
         archivo_blob = Blob()
+        length = 0
+
         with archivo_blob.open('w') as target:
             while True:
                 b = source.read(4096)
-                if not b: break
-                target.write(b)
+                if not b: 
+                    break
+                length += target.write(b)
+
+                if length > max_size:
+                    request.response.status = 400
+                    max_size_mb = max_size // (1024 * 1024)
+                    return {'error': f'El gif debe ser de máximo {max_size_mb} MB'}
                 
         context.data = archivo_blob
         context.mime = mimetype
