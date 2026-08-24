@@ -3,8 +3,10 @@ from persistent import Persistent
 from persistent.mapping import PersistentMapping
 from BTrees._OOBTree import OOBTree
 from persistent.list import PersistentList
+from ZODB.blob import Blob
+from .axes import CellBuilder
 from slugify import slugify
-import json, uuid
+import json, uuid, os
 
 class BeeHive(PersistentMapping):
     """A container of Honeycombs. This represents the top-level hierarchy which gives entry to honeycombs. It should
@@ -82,19 +84,23 @@ class Honeycomb(PersistentMapping):
 
     def __init__(self, name, title=""):
         PersistentMapping.__init__(self)
-        self.id = uuid.uuid4()
+        self.id = str(uuid.uuid4())
         self.__name__ = name
         self.title = title
         self.icon = None
         self.map = None
+        self.__featured__ = OOBTree()  # Esto es nuevo y vital para la base de datos
 
-    def __setitem__(self, key, value):
-        """Asigna item y actualiza __parent__ y __name__"""
-        super().__setitem__(key, value)
-        if hasattr(value, '__parent__'):
-            value.__parent__ = self
-        if hasattr(value, '__name__'):
-            value.__name__ = key
+    def toggle_featured(self, node):
+        if self.__featured__.has_key(node.id.hex):
+            del self.__featured__[node.id.hex]
+            is_featured = False
+        else:
+            self.__featured__[node.id.hex] = node
+            is_featured = True
+        node.is_featured = is_featured
+        self._p_changed = True
+        return is_featured
     
     def set_map(self, honeycombmap):
         self.map = honeycombmap
@@ -146,6 +152,7 @@ class HoneycombGraph(PersistentMapping):
         nodes_map = {}
 
         graph = cls(name, title)
+        builder = CellBuilder()
 
         # 1. Crear todos los objetos de nodo
         for node_data in graph_data['nodes']:
@@ -157,14 +164,22 @@ class HoneycombGraph(PersistentMapping):
                     name=node_data['data']['label'].lower().replace(" ", "-"),
                     title = node_data['data']['label'],
                 )
-            elif node_type == None:
-                node_obj = CellText( #ToDo: Graphs can have different kinds of node, this should also be codified in the JSON
+            else:
+                node_obj = CellLeaf( #ToDo: Graphs can have different kinds of node, this should also be codified in the JSON
                     title=node_data['data']['label'],
                     name=node_data['data']['label'].lower().replace(" ", "-"), #ToDo: Nodes should have a name, if it is not provided, it could be a scrub from the title or label. Use id as name only if there is no other option.
-                    contents=node_data['data']['label']
+                    #contents=node_data['data']['label']
                 )
+            assert type(node_obj) is CellNode or not node_type
             node_obj.id = json_id
             node_obj.__parent__ = graph
+
+            if "iconUrl" in node_data["data"]:
+                node_obj.icon = CellIcon.from_filesystem(node_data["data"]["iconUrl"])
+
+            node_coordinates = node_data.get("coordinates", None)
+            if node_coordinates:
+                builder.fill_cell(node_obj, **node_coordinates)
 
             # Añadir al grafo principal y al mapa temporal
             graph.add_node(node_obj)
@@ -302,25 +317,39 @@ class StaticCell(CellLeaf):
         self.icon = None
 
 
-class CellIcon(CellLeaf):
+class CellIcon(Persistent):
     """A BeeHive cell icon."""
-    def __init__(self, name, title="", icon=None):
-        super().__init__(name=name, title=title)
-        self.__name__ = name
-        self.title = title
-        self.icon = icon
+    def __init__(self, blob):
+        super().__init__()
+        self.blob = blob
+        self.icon = None
+        self.title = ""
+        self.__name__ = ""
 
     def set_icon(self, icon):
         self.icon = icon
 
     def get_icon(self):
         return self.icon
-    
+
+    @classmethod
+    def from_filesystem(cls, path):
+        if os.path.exists(path):
+            from ZODB.blob import Blob
+            icon_data = Blob()
+            with open(path, "rb") as source:
+                with icon_data.open('w') as target:
+                    while True:
+                        b = source.read(4096)
+                        if not b:
+                            break
+                        else:
+                            target.write(b)
+            return cls(icon_data)
 
 class CellText(CellLeaf):
     def __init__(self, name, contents, title="", icon=None):
         super().__init__(name=name, title=title)
-        self.__name__ = name
         self.title = title
         self.contents = contents
         self.icon = icon
@@ -343,7 +372,6 @@ class CellText(CellLeaf):
 class CellRichText(CellLeaf):
     def __init__(self, name, contents, title="", icon=None):
         super().__init__(name=name, title=title)
-        self.__name__ = name
         self.title = title
         self.source = contents
         self.icon = icon
@@ -356,18 +384,12 @@ class CellRichText(CellLeaf):
 
 
 class CellAnimation(CellLeaf):
-    def __init__(self, name, url, title="", icon=None):
+    """Animation (binary blob)."""
+    def __init__(self, name, data, mime, title="", icon=None):
         super().__init__(name=name, title=title)
-        self.__name__ = name
-        self.href = url
-        self.title = title
+        self.data = data
+        self.mime = mime
         self.icon = icon
-
-    def set_icon(self, icon):
-        self.icon = icon
-
-    def get_icon(self):
-        return self.icon
 
 
 class CellAudio(CellLeaf):
@@ -383,7 +405,6 @@ class CellAudio(CellLeaf):
 class CellWebContent(CellLeaf):
     def __init__(self, name, url, title="", icon=None):
         super().__init__(name=name, title=title)
-        self.__name__ = name
         self.href = url
         self.title = title
         self.icon = icon
