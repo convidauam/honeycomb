@@ -1,14 +1,14 @@
 {
   "nodes": [
-    { "id": "node-4d550c14-aa4f-47f2-af71-5b850f76f48d", "data": { "label": "Huevo (2n) fecundado" }, "coordinates": {"problem_solving": 32.51074546134117, "integration": 322.13017301403823, "abstract_thinking": 0} },
-    { "id": "node-dd5892f6-fee6-4ee2-a835-6e63c79dd16c", "data": { "label": "Reina inseminada y con óvulos" }, "coordinates": {"problem_solving": 277.91866747528616, "integration": 50.51743823373472, "abstract_thinking": 0} },
-    { "id": "node-f38869ef-a442-472e-b012-4a47f6dc9412", "data": { "label": "Huevo (n) no fecundado" }, "coordinates": {"problem_solving": 660.6928337433189, "integration": 302.1301730140383, "abstract_thinking": 0} },
-    { "id": "node-90aeec3c-a481-4f5b-95ec-22436264629d", "data": { "label": "Zángano (n) haploide" }, "coordinates": {"problem_solving": 664.6636368760062, "integration": -92.60625631361742, "abstract_thinking": 0} },
-    { "id": "node-395a0990-408a-4459-a8e2-b74100a3f295", "data": { "label": "Espermatozoides" }, "coordinates": {"problem_solving": 430.0026400834459, "integration": -174.23845567212945, "abstract_thinking": 0} },
-    { "id": "node-9cb93970-e971-4530-949e-b3d94802f1b5", "data": { "label": "reina (2n) diploide" }, "coordinates": {"problem_solving": 41.05973005239025, "integration": -60.99963582863957, "abstract_thinking": 0} },
-    { "id": "node-ac79e039-af75-42c8-8c26-ada689894dfc", "data": { "label": "Obrera (2n) diploide" }, "coordinates": {"problem_solving": -228.49695409631192, "integration": 6.688160131459547, "abstract_thinking": 0} },
-    { "id": "node-142e860a-4c6d-4d41-a2d6-422f2e384fa3", "data": { "label": "Óvulos" }, "coordinates": {"problem_solving": 211.17625180649404, "integration": -178.53497670270008, "abstract_thinking": 0} },
-    { "id": "node-4c9a3ad4-c66b-44ac-a141-04ad6ee2d8ff", "data": { "label": "Acoplamiento" }, "coordinates": {"problem_solving": 318.94240364774004, "integration": -51.53414228744782, "abstract_thinking": 0} }
+    { "id": "node-4d550c14-aa4f-47f2-af71-5b850f76f48d", "data": { "label": "Huevo (2n) fecundado" } },
+    { "id": "node-dd5892f6-fee6-4ee2-a835-6e63c79dd16c", "data": { "label": "Reina inseminada y con óvulos" } },
+    { "id": "node-f38869ef-a442-472e-b012-4a47f6dc9412", "data": { "label": "Huevo (n) no fecundado" } },
+    { "id": "node-90aeec3c-a481-4f5b-95ec-22436264629d", "data": { "label": "Zángano (n) haploide" } },
+    { "id": "node-395a0990-408a-4459-a8e2-b74100a3f295", "data": { "label": "Espermatozoides" } },
+    { "id": "node-9cb93970-e971-4530-949e-b3d94802f1b5", "data": { "label": "reina (2n) diploide" } },
+    { "id": "node-ac79e039-af75-42c8-8c26-ada689894dfc", "data": { "label": "Obrera (2n) diploide" } },
+    { "id": "node-142e860a-4c6d-4d41-a2d6-422f2e384fa3", "data": { "label": "Óvulos" } },
+    { "id": "node-4c9a3ad4-c66b-44ac-a141-04ad6ee2d8ff", "data": { "label": "Acoplamiento" } }
   ],
   "edges": [
     { "source": "node-f38869ef-a442-472e-b012-4a47f6dc9412", "target": "node-90aeec3c-a481-4f5b-95ec-22436264629d", "label": "desarrollo por partenogénesis arrenotóquica / alimentación: para zángano" },
