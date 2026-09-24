@@ -68,3 +68,9 @@ class HoneycombExplorer(Persistent):
         "In reduction function precomputed indicates the property of matrix distances and no the nodes points in the space, while we use the random state to preserve the correct position of all nodes"
         self.coords_2d = reduction.fit_transform(self.update_matrix)
         return self.coords_2d
+        def dictionary(self, uuid):
+        for i, node in enumerate(self.names):
+            if node==uuid:
+                return self.coords_2d[i]
+            return "Id not found"
+ 
