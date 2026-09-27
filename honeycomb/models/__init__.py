@@ -1,5 +1,6 @@
 from .beehive import *
 from .axes import *
+from ZODB.blob import Blob
 
 def appmaker(zodb_root):
     if 'app_root' not in zodb_root:
@@ -36,7 +37,12 @@ def appmaker(zodb_root):
 
          # Nodo de Rich Text
 
-        icon = CellIcon('logo', title="Bee Logo", icon="🐝")
+        # icon = CellIcon('logo', title="Bee Logo", icon="🐝")
+        dummy_blob = Blob()
+        with dummy_blob.open('w') as f:
+            f.write(b"")
+        
+        icon = CellIcon('logo', data=dummy_blob, mime='image/png', title="Bee Logo", icon="🐝")
         icon.__parent__ = hc
         hc['logo'] = icon
 
@@ -72,7 +78,12 @@ def appmaker(zodb_root):
 
          # Nodo de Animación
 
-        animation = CellAnimation('bee-dance', url="/static/bee-dance.gif", title="Bee Dance", icon="🐝")
+        #animation = CellAnimation('bee-dance', url="/static/bee-dance.gif", title="Bee Dance", icon="🐝")
+        dummy_blob_anim = Blob()
+        with dummy_blob_anim.open('w') as f:
+            f.write(b"")
+
+        animation = CellAnimation('bee-dance', data=dummy_blob_anim, mime='image/gif', title="Bee Dance", icon="🐝")
         animation.__parent__ = hc
         hc['bee-dance'] = animation
 
@@ -160,7 +171,20 @@ def appmaker(zodb_root):
         abejas[mapa.__name__] = mapa
         app_root.add_node(mapa)
 
-        reproduccion = mapa['reproducción']
+        reproduccion = None
+        # FIX: Se cambia el nodo de rescate de CellText a Honeycomb.
+        # Si la ZODB está limpia, el código anterior creaba un CellText, lo cual
+        # lanzaba un TypeError ('CellText' object does not support item assignment)
+        # al intentar guardar el grafo dentro de él. Honeycomb actúa como un contenedor válido.
+        for llave, nodo in mapa.items():
+            titulo = getattr(nodo, 'title', '') or getattr(nodo, 'label', '')
+            if titulo == 'Reproducción':
+                reproduccion = nodo
+                break
+        
+        if reproduccion is None:
+            reproduccion = Honeycomb("reproduccion_emergencia", "Reproducción")
+            mapa['reproduccion_emergencia'] = reproduccion
 
         with open("honeycomb/static/assets/grafo_reproduccion.json") as f:
             grafo = HoneycombGraph.from_json(f.read(), name="ciclo-reproductivo", title="Ciclo reproductivo")
