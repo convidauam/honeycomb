@@ -4,7 +4,9 @@ from persistent.mapping import PersistentMapping
 from BTrees._OOBTree import OOBTree
 from persistent.list import PersistentList
 from slugify import slugify
-import json, uuid
+from ZODB.blob import Blob
+from .axes import CellBuilder
+import json, uuid, os
 
 class BeeHive(PersistentMapping):
     """A container of Honeycombs. This represents the top-level hierarchy which gives entry to honeycombs. It should
@@ -21,10 +23,37 @@ class BeeHive(PersistentMapping):
         self.__edges__ = OOBTree()
 
     # gestión de nodos y aristas
-    def add_node(self, node):
+    def add_node(self, node, recurse=False):
         node_id = str(getattr(node, "id", "")) or getattr(node, "__name__", None)
-        #node.__parent__ = self
         self.__nodes__[node_id] = node
+        self._add_node_edges(node)
+        if recurse:
+            if hasattr(node, "nodes"):
+                for child in node.nodes:
+                    self.add_node(child)
+            elif isinstance(node, PersistentMapping):
+                for child in node.values():
+                    self.add_node(child)
+
+    def _add_node_edges(self, node):
+        """
+        Agrega las conexiones (edges) del nodo al índice global __edges__.
+        Si el nodo es un grafo o contenedor, agrega recursivamente las conexiones de sus hijos.
+        """
+        node_id = str(getattr(node, "id", "")) or getattr(node, "__name__", None)
+        # Si el nodo tiene 'edges' (como HoneycombGraph), agrégalas al índice global
+        if hasattr(node, "edges") and isinstance(node.edges, (list, PersistentList)):
+            if node_id not in self.__edges__:
+                self.__edges__[node_id] = PersistentList()
+            for edge in node.edges:
+                self.__edges__[node_id].append(edge)
+        # Si el nodo tiene hijos (por ejemplo, en HoneycombGraph o CellNode), agrega recursivamente
+        if hasattr(node, "nodes") and isinstance(node.nodes, (list, PersistentList)):
+            for child in node.nodes:
+                self._add_node_edges(child)
+        if isinstance(node, PersistentMapping):
+            for child in node.values():
+                self._add_node_edges(child)
 
     def get_node_by_name(self, name):
         """Obtiene el nodo por su nombre único (__name__)."""
@@ -43,6 +72,64 @@ class BeeHive(PersistentMapping):
         if hasattr(edge, "__parent__"):
             edge.__parent__ = self
         self.__edges__[source_id].append(edge)
+
+    def remove_node_recursively(self, node_id):
+        """
+        Elimina el nodo, todos sus hijos y todas las conexiones asociadas (edges) del índice global.
+        """
+        node = self.__nodes__.get(node_id)
+        if not node:
+            return
+
+        # Recolecta todos los IDs a eliminar (nodo y descendientes)
+        ids_to_remove = set()
+
+        def collect_ids(n):
+            nid = str(getattr(n, "id", "")) or getattr(n, "__name__", None)
+            ids_to_remove.add(nid)
+
+            # Si el nodo tiene hijos (por ejemplo, en un grafo o contenedor), recorre recursivamente
+            if hasattr(n, "nodes") and isinstance(getattr(n, "nodes", None), (list, PersistentList)):
+                for child in n.nodes:
+                    collect_ids(child)
+            if isinstance(n, PersistentMapping):
+                for child in n.values():
+                    collect_ids(child)
+
+        collect_ids(node)
+
+        # Elimina todos los nodos recolectados del índice global
+        for nid in ids_to_remove:
+            if nid in self.__nodes__:
+                del self.__nodes__[nid]
+
+        # Elimina todas las conexiones donde cualquier nodo recolectado sea fuente
+        for nid in ids_to_remove:
+            if nid in self.__edges__:
+                del self.__edges__[nid]
+
+        # Elimina todas las conexiones donde cualquier nodo recolectado sea destino
+        for src, edges in list(self.__edges__.items()):
+            new_edges = PersistentList([e for e in edges if (getattr(e, "to_node", None) and ((getattr(e.to_node, '__name__', None) or str(getattr(e.to_node, 'id', ''))) not in ids_to_remove))])
+            if new_edges:
+                self.__edges__[src] = new_edges
+            else:
+                del self.__edges__[src]
+
+    def sync_graph_edges(self, graph_node):
+        """
+        Sincroniza las conexiones (edges) de un HoneycombGraph con el índice global __edges__.
+        Elimina las aristas previas del grafo en __edges__ y agrega las actuales.
+        """
+        node_id = str(getattr(graph_node, "id", "")) or getattr(graph_node, "__name__", None)
+        # Elimina las aristas previas del grafo en el índice global
+        if node_id in self.__edges__:
+            del self.__edges__[node_id]
+        # Agrega las aristas actuales del grafo
+        if hasattr(graph_node, "edges") and isinstance(graph_node.edges, (list, PersistentList)):
+            self.__edges__[node_id] = PersistentList()
+            for edge in graph_node.edges:
+                self.__edges__[node_id].append(edge)
 
     def set_name(self, name, title=""):
         self.__name__ = name
@@ -87,6 +174,18 @@ class Honeycomb(PersistentMapping):
         self.title = title
         self.icon = None
         self.map = None
+        self.__featured__ = OOBTree()
+
+    def toggle_featured(self, node):
+        if self.__featured__.has_key(node.id.hex):
+            del self.__featured__[node.id.hex]
+            is_featured = False
+        else:
+            self.__featured__[node.id.hex] = node
+            is_featured = True
+        node.is_featured = is_featured
+        self._p_changed = True
+        return is_featured
 
     def __setitem__(self, key, value):
         """Asigna item y actualiza __parent__ y __name__"""
@@ -116,6 +215,7 @@ class HoneycombGraph(PersistentMapping):
         self.id = uuid.uuid4()
         self.__name__ = name
         self.title = title
+        self.icon = None
         self.nodes = PersistentList()
         self.edges = PersistentList()
 
@@ -146,25 +246,47 @@ class HoneycombGraph(PersistentMapping):
         nodes_map = {}
 
         graph = cls(name, title)
+        builder = CellBuilder()
 
         # 1. Crear todos los objetos de nodo
         for node_data in graph_data['nodes']:
             json_id = node_data['id']
-            node_type = node_data.get("type", None)
+            node_type = node_data["data"].get("type", None)
             assert node_type in ['custom', None]
             if node_type == "custom":
                 node_obj = CellNode(
                     name=node_data['data']['label'].lower().replace(" ", "-"),
                     title = node_data['data']['label'],
                 )
-            elif node_type == None:
-                node_obj = CellText( #ToDo: Graphs can have different kinds of node, this should also be codified in the JSON
+            else:
+                node_obj = CellLeaf( #ToDo: Graphs can have different kinds of node, this should also be codified in the JSON
                     title=node_data['data']['label'],
                     name=node_data['data']['label'].lower().replace(" ", "-"), #ToDo: Nodes should have a name, if it is not provided, it could be a scrub from the title or label. Use id as name only if there is no other option.
-                    contents=node_data['data']['label']
+                    #contents=node_data['data']['label']
                 )
+            assert type(node_obj) is CellNode or not node_type
             node_obj.id = json_id
             node_obj.__parent__ = graph
+
+            if "iconUrl" in node_data["data"]:
+                node_obj.icon = CellIcon.from_filesystem(node_data["data"]["iconUrl"])
+                # if os.path.exists(node_data["data"]["iconUrl"]):
+                #     icon_data = Blob()
+                #     with open(node_data["data"]["iconUrl"], "rb") as source:
+                #         with icon_data.open('w') as target:
+                #             while True:
+                #                 b = source.read(4096)
+                #                 if not b:
+                #                     break
+                #                 else:
+                #                     target.write(b)
+                #     icon = CellIcon(icon_data)
+                #     node_obj.icon = icon
+
+
+            node_coordinates = node_data.get("coordinates", None)
+            if node_coordinates:
+                builder.fill_cell(node_obj, **node_coordinates)
 
             # Añadir al grafo principal y al mapa temporal
             graph.add_node(node_obj)
@@ -236,6 +358,7 @@ class CellLeaf(Persistent):
         else:
             self.__name__ = self.id.hex
         self.__parent__ = parent
+        self.is_featured = False
         self.title = title
         self.icon = None
 
@@ -253,6 +376,7 @@ class CellNode(PersistentMapping):
         else:
             self.__name__ = self.id.hex
         self.__parent__ = parent
+        self.is_featured = False
         self.title = title
         self.icon = None
 
@@ -302,20 +426,32 @@ class StaticCell(CellLeaf):
         self.icon = None
 
 
-class CellIcon(CellLeaf):
+class CellIcon(Persistent):
     """A BeeHive cell icon."""
-    def __init__(self, name, title="", icon=None):
-        super().__init__(name=name, title=title)
-        self.__name__ = name
-        self.title = title
-        self.icon = icon
+    def __init__(self, blob):
+        super().__init__()
+        self.blob = blob
 
     def set_icon(self, icon):
         self.icon = icon
 
     def get_icon(self):
         return self.icon
-    
+
+    @classmethod
+    def from_filesystem(cls, path):
+        if os.path.exists(path):
+            icon_data = Blob()
+            with open(path, "rb") as source:
+                with icon_data.open('w') as target:
+                    while True:
+                        b = source.read(4096)
+                        if not b:
+                            break
+                        else:
+                            target.write(b)
+                    return cls(icon_data)
+
 
 class CellText(CellLeaf):
     def __init__(self, name, contents, title="", icon=None):
