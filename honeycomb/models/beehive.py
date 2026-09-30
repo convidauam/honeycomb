@@ -303,13 +303,19 @@ class StaticCell(CellLeaf):
 
 
 class CellIcon(CellLeaf):
-    """A BeeHive cell icon (binary blob)."""
-    def __init__(self, name, data, mime, title="", icon=None):
+    """A BeeHive cell icon."""
+    def __init__(self, name, title="", icon=None):
         super().__init__(name=name, title=title)
-        self.data = data
-        self.mime = mime
+        self.__name__ = name
+        self.title = title
         self.icon = icon
 
+    def set_icon(self, icon):
+        self.icon = icon
+
+    def get_icon(self):
+        return self.icon
+    
 
 class CellText(CellLeaf):
     def __init__(self, name, contents, title="", icon=None):
