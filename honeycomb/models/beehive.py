@@ -3,6 +3,7 @@ from persistent import Persistent
 from persistent.mapping import PersistentMapping
 from BTrees._OOBTree import OOBTree
 from persistent.list import PersistentList
+from slugify import slugify
 from ZODB.blob import Blob
 from .axes import CellBuilder
 import json, uuid, os
@@ -16,7 +17,7 @@ class BeeHive(PersistentMapping):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.id = str(uuid.uuid4())
+        self.id = uuid.uuid4()
         self.title = "BeeHive Root"
         self.__nodes__ = OOBTree()
         self.__edges__ = OOBTree()
@@ -168,7 +169,7 @@ class Honeycomb(PersistentMapping):
 
     def __init__(self, name, title=""):
         PersistentMapping.__init__(self)
-        self.id = str(uuid.uuid4())
+        self.id = uuid.uuid4()
         self.__name__ = name
         self.title = title
         self.icon = None
@@ -186,12 +187,20 @@ class Honeycomb(PersistentMapping):
         self._p_changed = True
         return is_featured
 
+    def __setitem__(self, key, value):
+        """Asigna item y actualiza __parent__ y __name__"""
+        super().__setitem__(key, value)
+        if hasattr(value, '__parent__'):
+            value.__parent__ = self
+        if hasattr(value, '__name__'):
+            value.__name__ = key
+    
     def set_map(self, honeycombmap):
         self.map = honeycombmap
 
     def get_map(self):
         return self.map
-
+    
 class CellEdge(Persistent):
     def __init__(self, name, title, from_node, to_node, kind="default"):
         self.name = name
@@ -340,26 +349,36 @@ class CellLeaf(Persistent):
     """A terminal node in the honeycomb structure, it cannot have children nodes."""
     def __init__(self, name="", parent=None, title=""):
         super().__init__()
-        self.__name__ = name
+        # Cada nodo tiene un ID único y persistente
+        self.id = uuid.uuid4()
+        if name:
+            self.__name__ = name
+        elif title:
+            self.__name__ = slugify(title)
+        else:
+            self.__name__ = self.id.hex
         self.__parent__ = parent
         self.is_featured = False
         self.title = title
         self.icon = None
-        # Cada nodo tiene un ID único y persistente
-        self.id = uuid.uuid4()
 
 
 class CellNode(PersistentMapping):
     """A node in the honeycomb structure, it can contain children nodes or be alone, it can also be static or interactive."""
     def __init__(self, name="", parent=None, title=""):
         super().__init__()
-        self.__name__ = name
+        # Cada nodo tiene un ID único y persistente
+        self.id = uuid.uuid4()
+        if name:
+            self.__name__ = name
+        elif title:
+            self.__name__ = slugify(title)
+        else:
+            self.__name__ = self.id.hex
         self.__parent__ = parent
         self.is_featured = False
         self.title = title
         self.icon = None
-        # Cada nodo tiene un ID único y persistente
-        self.id = uuid.uuid4()
 
     def set_icon(self, icon):
         self.icon = icon
@@ -392,7 +411,7 @@ class HoneyDynamicMap(CellLeaf):
 class InteractiveCell(CellLeaf):
     """A BeeHive cell containing an interactive element"""
     def __init__(self, name, title=""):
-        super().__init__(self)
+        super().__init__(name=name, title=title)
         self.__name__ = name
         self.title = title
         self.icon = None
@@ -401,7 +420,7 @@ class InteractiveCell(CellLeaf):
 class StaticCell(CellLeaf):
     """A BeeHive cell containing static elements"""
     def __init__(self, name, title=""):
-        super().__init__(self)
+        super().__init__(name=name, title=title)
         self.__name__ = name
         self.title = title
         self.icon = None
@@ -436,8 +455,7 @@ class CellIcon(Persistent):
 
 class CellText(CellLeaf):
     def __init__(self, name, contents, title="", icon=None):
-        super().__init__(self)
-        self.__name__ = name
+        super().__init__(name=name, title=title)
         self.title = title
         self.contents = contents
         self.icon = icon
@@ -459,8 +477,7 @@ class CellText(CellLeaf):
 
 class CellRichText(CellLeaf):
     def __init__(self, name, contents, title="", icon=None):
-        super().__init__(self)
-        self.__name__ = name
+        super().__init__(name=name, title=title)
         self.title = title
         self.source = contents
         self.icon = icon
@@ -473,24 +490,27 @@ class CellRichText(CellLeaf):
 
 
 class CellAnimation(CellLeaf):
-    def __init__(self, name, url, title="", icon=None):
-        super().__init__(self)
-        self.__name__ = name
-        self.href = url
-        self.title = title
+    """Animation (binary blob)."""
+    def __init__(self, name, data, mime, title="", icon=None):
+        super().__init__(name=name, title=title)
+        self.data = data
+        self.mime = mime
         self.icon = icon
 
-    def set_icon(self, icon):
-        self.icon = icon
 
-    def get_icon(self):
-        return self.icon
+class CellAudio(CellLeaf):
+    """Contains audio metadata and binary blob"""
+    def __init__(self, name, data, mime, length=0, title="", icon=None):
+        super().__init__(name=name, title=title)
+        self.data = data
+        self.icon = icon
+        self.mime = mime
+        self.length = length
 
 
 class CellWebContent(CellLeaf):
     def __init__(self, name, url, title="", icon=None):
-        super().__init__(self)
-        self.__name__ = name
+        super().__init__(name=name, title=title)
         self.href = url
         self.title = title
         self.icon = icon
