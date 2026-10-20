@@ -64,13 +64,13 @@ class HoneycombExplorer(Persistent):
         "This use the MDS dimentional reduction trough sklearn function defined"
         if self.matrix is None:
             self.update_matrix()
-        reduction= MDS(n_components=components, dissimilarity='precomputed', random_state=42)
+        reduction = MDS(n_components=components, dissimilarity='precomputed', random_state=42)
         "In reduction function precomputed indicates the property of matrix distances and no the nodes points in the space, while we use the random state to preserve the correct position of all nodes"
-        self.coords_2d = reduction.fit_transform(self.update_matrix)
+        self.coords_2d = reduction.fit_transform(self.matrix)
         return self.coords_2d
-        def dictionary(self, uuid):
+
+    def dictionary(self, uuid):
         for i, node in enumerate(self.names):
-            if node==uuid:
+            if node == uuid:
                 return self.coords_2d[i]
-            return "Id not found"
- 
+        return "Id not found"
