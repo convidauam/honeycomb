@@ -10,8 +10,11 @@ Catalogo y asignacion son cosas distintas. El catalogo (el nodo, sus Challenge y
 sus Badge) se define una vez y es igual para todos. La asignacion (Reward) se crea
 una vez por cada logro conseguido por cada jugador, con Badge.grant().
 
+Los retos siguen las interacciones simples de QTI 3.0, seccion 2.4.1:
+https://www.imsglobal.org/sites/default/files/spec/qti/v3/info/imsqti_asi_v3p0p1_infomodel_v1p0.html#Main2p4
+
 La respuesta correcta de un Challenge nunca sale hacia el cliente: to_dict() no la
-incluye y la unica forma de usarla es check_answer(), que corre en el servidor.
+incluye y la unica forma de usarla es check_proof(), que corre en el servidor.
 """
 
 from persistent import Persistent
@@ -22,10 +25,53 @@ from .beehive import InteractiveCell
 import datetime
 import uuid
 
+# Interacciones simples de QTI con el tipo base y las cardinalidades que la
+# especificacion permite para su respuesta. La primera es la de omision.
+INTERACTIONS = {
+    "choice": ("identifier", ("single", "multiple")),
+    "order": ("identifier", ("ordered",)),
+    "associate": ("pair", ("multiple", "single")),
+    "match": ("directedPair", ("multiple", "single")),
+    "gapMatch": ("directedPair", ("multiple", "single")),
+}
+
 
 def _now():
     """Marca de tiempo UTC en ISO-8601, serializable a JSON."""
     return datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+
+def _identifier(value):
+    # bool queda fuera porque en Python True == 1 y pasaria por la opcion 1.
+    if isinstance(value, bool) or not isinstance(value, (str, int)):
+        raise ValueError(f"identificador invalido: {value!r}")
+    return value
+
+
+def _value(value, base_type):
+    """Un valor de respuesta en forma comparable segun su tipo base QTI."""
+    if base_type == "identifier":
+        return _identifier(value)
+    if not isinstance(value, (list, tuple)) or len(value) != 2:
+        raise ValueError(f"se esperaba un par: {value!r}")
+    first, second = _identifier(value[0]), _identifier(value[1])
+    # En pair el orden no importa. En directedPair si.
+    if base_type == "pair":
+        return frozenset((first, second))
+    return (first, second)
+
+
+def _response(response, base_type, cardinality):
+    """Una respuesta completa en forma comparable.
+
+    Una cadena nunca cuenta como lista: "AB" no es ["A", "B"].
+    """
+    if cardinality == "single":
+        return _value(response, base_type)
+    if not isinstance(response, (list, tuple)):
+        raise ValueError(f"se esperaba una lista: {response!r}")
+    values = [_value(v, base_type) for v in response]
+    return values if cardinality == "ordered" else frozenset(values)
 
 
 class Badge(Persistent):
@@ -64,42 +110,75 @@ class Badge(Persistent):
 class Challenge(Persistent):
     """Un reto dentro de un juego. Al superarlo se otorgan sus insignias.
 
-    Cuando el reto es una pregunta, `options` son las que ve el jugador y `answer`
-    es el indice de la correcta. Ese indice se queda en el servidor. Un reto sin
-    `answer` configurada no se puede superar por esta via: lo reporta el juego,
-    como el de obtener la primera combinacion.
+    No todos los retos son preguntas. `interaction` es una de las interacciones
+    simples de QTI y la prueba que manda el jugador se compara con
+    `correct_response` segun las reglas de esa interaccion. Las opciones se
+    identifican por id y no por posicion, asi se pueden barajar sin romper la
+    respuesta.
+
+    Un reto sin interaccion lo reporta el propio juego, como el de obtener la
+    primera combinacion. check_proof() lo rechaza siempre, y su insignia se
+    otorga directo con Badge.grant().
     """
 
-    def __init__(self, name, title, badges, description="",
-                 question="", options=None, answer=None, id=None):
+    def __init__(self, name, title, badges, description="", interaction=None,
+                 cardinality=None, prompt="", choices=None, correct_response=None,
+                 id=None):
+        if interaction is not None:
+            if interaction not in INTERACTIONS:
+                raise ValueError(f"interaccion desconocida: {interaction!r}")
+            allowed = INTERACTIONS[interaction][1]
+            cardinality = cardinality or allowed[0]
+            if cardinality not in allowed:
+                raise ValueError(f"{interaction} no admite cardinalidad {cardinality!r}")
         self.id = id or str(uuid.uuid4())
         self.name = name
         self.title = title
         self.description = description
         self.badges = PersistentList(badges)
-        self.question = question
-        self.options = PersistentList(options or [])
-        # Indice de la opcion correcta. Privado a proposito.
-        self.answer = answer
+        self.interaction = interaction
+        self.cardinality = cardinality
+        self.prompt = prompt
+        self.choices = PersistentList(choices or [])
+        # Privado a proposito. Se valida aqui para que un catalogo mal cargado
+        # truene al crearlo y no en medio de una partida.
+        self.correct_response = correct_response
+        if self.is_verifiable():
+            self._comparable(correct_response)
 
-    def is_question(self):
-        return bool(self.question) and self.answer is not None
+    def is_verifiable(self):
+        """Si el servidor puede decidir por su cuenta que el reto se supero."""
+        return self.interaction is not None and self.correct_response is not None
 
-    def check_answer(self, answer):
-        """Unica forma de usar la respuesta correcta. Solo corre en el servidor."""
-        if self.answer is None:
-            return False
-        return answer == self.answer
+    def _comparable(self, response):
+        base_type = INTERACTIONS[self.interaction][0]
+        return _response(response, base_type, self.cardinality)
+
+    def check_proof(self, proof):
+        """Devuelve las insignias ganadas con esta prueba, o una lista vacia.
+
+        Es la unica forma de usar la respuesta correcta y solo corre en el
+        servidor. Una prueba mal formada cuenta como incorrecta, no truena.
+        """
+        if not self.is_verifiable():
+            return []
+        try:
+            passed = self._comparable(proof) == self._comparable(self.correct_response)
+        except ValueError:
+            return []
+        return list(self.badges) if passed else []
 
     def to_dict(self):
-        """Vista publica. No incluye `answer` ni debe incluirla nunca."""
+        """Vista publica. No incluye `correct_response` ni debe incluirla nunca."""
         return {
             "id": self.id,
             "name": self.name,
             "title": self.title,
             "description": self.description,
-            "question": self.question,
-            "options": list(self.options),
+            "interaction": self.interaction,
+            "cardinality": self.cardinality,
+            "prompt": self.prompt,
+            "choices": list(self.choices),
             "badges": [badge.to_dict() for badge in self.badges],
         }
 
