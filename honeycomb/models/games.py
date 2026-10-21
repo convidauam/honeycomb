@@ -1,10 +1,10 @@
 """Nodos de videojuego, con sus retos, insignias y recompensas.
 
 Los juegos son nodos: descienden de InteractiveCell, que ya vive en beehive.py.
-Hay una clase por tipo de interactivo para que cada una pueda registrar su propia
-vista, igual que CellText o CellWebContent registran las suyas en views/default.py.
-Una instancia de CellCombiner seria, por ejemplo, el combinabejas con sus assets
-y parametros.
+GameCell es la base compartida por los juegos de Pixi.js y de Unity, y hay una
+subclase por tecnologia para que cada una pueda registrar su propia vista y
+entregar sus assets en el formato que necesita. El quiz y el combinabejas son
+instancias de PixiGame.
 
 Catalogo y asignacion son cosas distintas. El catalogo (el nodo, sus Challenge y
 sus Badge) se define una vez y es igual para todos. La asignacion (Reward) se crea
@@ -126,15 +126,21 @@ class Reward(Persistent):
 
 
 class GameCell(InteractiveCell):
-    """Base de los nodos de videojuego. Lo que todos comparten son sus retos.
+    """Base compartida por los juegos de Pixi.js y de Unity.
 
-    No se instancia directamente: cada tipo de interactivo tiene su subclase, para
-    que Pyramid pueda despachar una vista distinta por tipo.
+    Le da a cada juego sus parametros generales y pone a su disposicion los
+    assets en el formato que pide su tecnologia. No se instancia directamente:
+    cada tecnologia tiene su subclase, para que Pyramid despache una vista
+    distinta por cada una.
     """
 
-    def __init__(self, name, title="", description=""):
+    def __init__(self, name, title="", description="", params=None, assets=None):
         super().__init__(name=name, title=title)
         self.description = description
+        # Los valores de params y assets se reemplazan completos: ZODB no ve
+        # los cambios hechos por dentro de un valor.
+        self.params = PersistentMapping(params or {})
+        self.assets = PersistentMapping(assets or {})
         self.challenges = PersistentList()
 
     def add_challenge(self, challenge):
@@ -152,42 +158,29 @@ class GameCell(InteractiveCell):
         return None
 
     def to_dict(self, include_challenges=True):
-        """Las celdas hermanas se serializan a mano en views/api.py. Aqui si hay
-        to_dict porque es lo que garantiza que ningun reto filtre su respuesta."""
+        """Las celdas hermanas se serializan en sus vistas. Aqui si hay to_dict
+        porque es lo que garantiza que ningun reto filtre su respuesta."""
         data = {
             "id": str(self.id),
             "name": self.__name__,
             "title": self.title,
             "description": self.description,
             "type": self.__class__.__name__,
+            "params": dict(self.params),
+            "assets": dict(self.assets),
         }
         if include_challenges:
             data["challenges"] = [c.to_dict() for c in self.challenges]
         return data
 
 
-class CellQuiz(GameCell):
-    """Juego de preguntas. Las preguntas viven en sus Challenge.
+class PixiGame(GameCell):
+    """Juego hecho con Pixi.js, como el quiz y el combinabejas."""
 
-    No agrega campos: existe para que el quiz tenga su propia vista y para poder
-    distinguirlo por tipo desde el frontend.
+
+class UnityGame(GameCell):
+    """Juego compilado con Unity para WebGL, como abejopolis y libado.
+
+    El formato de sus assets esta por definirse. Lo que hoy recibe el cargador
+    de Unity es dataUrl, frameworkUrl, codeUrl y streamingAssetsUrl.
     """
-
-
-class CellCombiner(GameCell):
-    """Juego de combinar piezas. Una instancia suya es el combinabejas.
-
-    `assets` son las imagenes y piezas con las que se arma, y `params` lo que
-    cambia entre un combinador y otro.
-    """
-
-    def __init__(self, name, title="", description="", assets=None, params=None):
-        super().__init__(name, title=title, description=description)
-        self.assets = PersistentList(assets or [])
-        self.params = PersistentMapping(params or {})
-
-    def to_dict(self, include_challenges=True):
-        data = super().to_dict(include_challenges=include_challenges)
-        data["assets"] = list(self.assets)
-        data["params"] = dict(self.params)
-        return data
