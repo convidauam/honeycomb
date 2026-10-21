@@ -119,11 +119,14 @@ class Challenge(Persistent):
     Un reto sin interaccion lo reporta el propio juego, como el de obtener la
     primera combinacion. check_proof() lo rechaza siempre, y su insignia se
     otorga directo con Badge.grant().
+
+    `assets` son los que el reto necesita aparte de los del juego, por ejemplo
+    la imagen que hay que identificar.
     """
 
     def __init__(self, name, title, badges, description="", interaction=None,
                  cardinality=None, prompt="", choices=None, correct_response=None,
-                 id=None):
+                 assets=None, id=None):
         if interaction is not None:
             if interaction not in INTERACTIONS:
                 raise ValueError(f"interaccion desconocida: {interaction!r}")
@@ -140,6 +143,7 @@ class Challenge(Persistent):
         self.cardinality = cardinality
         self.prompt = prompt
         self.choices = PersistentList(choices or [])
+        self.assets = PersistentMapping(assets or {})
         # Privado a proposito. Se valida aqui para que un catalogo mal cargado
         # truene al crearlo y no en medio de una partida.
         self.correct_response = correct_response
@@ -179,6 +183,7 @@ class Challenge(Persistent):
             "cardinality": self.cardinality,
             "prompt": self.prompt,
             "choices": list(self.choices),
+            "assets": dict(self.assets),
             "badges": [badge.to_dict() for badge in self.badges],
         }
 
