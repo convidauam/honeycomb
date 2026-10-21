@@ -175,7 +175,12 @@ class GameCell(InteractiveCell):
 
 
 class PixiGame(GameCell):
-    """Juego hecho con Pixi.js, como el quiz y el combinabejas."""
+    """Juego hecho con Pixi.js, como el quiz y el combinabejas.
+
+    Sus assets se entregan de preferencia como spritesheet JSON de Pixi, con
+    `frames` y `meta`, donde `meta.image` apunta a la imagen que los contiene:
+    https://pixijs.download/release/docs/assets.Spritesheet.html
+    """
 
 
 class UnityGame(GameCell):
