@@ -195,9 +195,9 @@ class Reward(Persistent):
     cada persona que la consiguio, con su marca de tiempo. Se crea con
     Badge.grant().
 
-    `grants` es lo que ese logro suma a las estadisticas del jugador, en los ejes
-    de axes.py. Nace en ceros. Queda pendiente confirmar con el profesor si las
-    estadisticas del usuario son efectivamente ese JellyPack.
+    `grants` es lo que ese logro suma en los ejes de axes.py, codificado como
+    JellyPack. Nace en ceros. Como se calcula para cada reto a partir del
+    `__axes__` del juego sigue en discusion.
     """
 
     def __init__(self, userid, badge, challenge=None, source=None, grants=None):
