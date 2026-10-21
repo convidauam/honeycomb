@@ -125,7 +125,7 @@ class Reward(Persistent):
         }
 
 
-class CellGame(InteractiveCell):
+class GameCell(InteractiveCell):
     """Base de los nodos de videojuego. Lo que todos comparten son sus retos.
 
     No se instancia directamente: cada tipo de interactivo tiene su subclase, para
@@ -166,7 +166,7 @@ class CellGame(InteractiveCell):
         return data
 
 
-class CellQuiz(CellGame):
+class CellQuiz(GameCell):
     """Juego de preguntas. Las preguntas viven en sus Challenge.
 
     No agrega campos: existe para que el quiz tenga su propia vista y para poder
@@ -174,7 +174,7 @@ class CellQuiz(CellGame):
     """
 
 
-class CellCombiner(CellGame):
+class CellCombiner(GameCell):
     """Juego de combinar piezas. Una instancia suya es el combinabejas.
 
     `assets` son las imagenes y piezas con las que se arma, y `params` lo que
