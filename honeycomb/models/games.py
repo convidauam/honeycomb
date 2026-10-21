@@ -8,7 +8,7 @@ instancias de PixiGame.
 
 Catalogo y asignacion son cosas distintas. El catalogo (el nodo, sus Challenge y
 sus Badge) se define una vez y es igual para todos. La asignacion (Reward) se crea
-una vez por cada logro conseguido por cada jugador.
+una vez por cada logro conseguido por cada jugador, con Badge.grant().
 
 La respuesta correcta de un Challenge nunca sale hacia el cliente: to_dict() no la
 incluye y la unica forma de usarla es check_answer(), que corre en el servidor.
@@ -32,7 +32,7 @@ class Badge(Persistent):
     """Lo que se otorga al superar un reto, y lo que el jugador comparte.
 
     Existe una sola vez en el catalogo aunque la ganen muchas personas. Reemplaza
-    a PollenBadge, que quedo sin usarse en beehive.py con estos mismos campos.
+    a PollenBadge, que quedo sin usarse en beehive.py y no es Persistent.
     """
 
     def __init__(self, name, title, icon=None, description="", id=None):
@@ -41,6 +41,15 @@ class Badge(Persistent):
         self.title = title
         self.icon = icon
         self.description = description
+
+    def grant(self, user, challenge=None, source=None, grants=None):
+        """Otorga esta insignia a `user` y devuelve la Reward que lo registra.
+
+        Todavia no la guarda en ningun lado: el lugar depende de como se
+        resuelva la identidad del usuario.
+        """
+        return Reward(user.userid, self, challenge=challenge, source=source,
+                      grants=grants)
 
     def to_dict(self):
         return {
@@ -53,7 +62,7 @@ class Badge(Persistent):
 
 
 class Challenge(Persistent):
-    """Un reto dentro de un juego. Al superarlo se otorga su insignia.
+    """Un reto dentro de un juego. Al superarlo se otorgan sus insignias.
 
     Cuando el reto es una pregunta, `options` son las que ve el jugador y `answer`
     es el indice de la correcta. Ese indice se queda en el servidor. Un reto sin
@@ -61,13 +70,13 @@ class Challenge(Persistent):
     como el de obtener la primera combinacion.
     """
 
-    def __init__(self, name, title, badge, description="",
+    def __init__(self, name, title, badges, description="",
                  question="", options=None, answer=None, id=None):
         self.id = id or str(uuid.uuid4())
         self.name = name
         self.title = title
         self.description = description
-        self.badge = badge
+        self.badges = PersistentList(badges)
         self.question = question
         self.options = PersistentList(options or [])
         # Indice de la opcion correcta. Privado a proposito.
@@ -91,22 +100,23 @@ class Challenge(Persistent):
             "description": self.description,
             "question": self.question,
             "options": list(self.options),
-            "badge": self.badge.to_dict() if self.badge else None,
+            "badges": [badge.to_dict() for badge in self.badges],
         }
 
 
 class Reward(Persistent):
-    """El registro de que un jugador supero un reto. Es la micro verificacion.
+    """El registro de que un jugador gano una insignia. Es la micro verificacion.
 
     A diferencia de la insignia, que es una sola en el catalogo, aqui hay una por
-    cada persona que la consiguio, con su marca de tiempo.
+    cada persona que la consiguio, con su marca de tiempo. Se crea con
+    Badge.grant().
 
     `grants` es lo que ese logro suma a las estadisticas del jugador, en los ejes
     de axes.py. Nace en ceros. Queda pendiente confirmar con el profesor si las
     estadisticas del usuario son efectivamente ese JellyPack.
     """
 
-    def __init__(self, userid, badge, challenge, source=None, grants=None):
+    def __init__(self, userid, badge, challenge=None, source=None, grants=None):
         self.userid = userid
         self.badge = badge
         self.challenge = challenge
