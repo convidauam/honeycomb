@@ -228,8 +228,10 @@ class GameCell(InteractiveCell):
     distinta por cada una.
     """
 
-    def __init__(self, name, title="", description="", params=None, assets=None):
+    def __init__(self, name, kind, title="", description="", params=None,
+                 assets=None):
         super().__init__(name=name, title=title)
+        self.kind = kind
         self.description = description
         # Los valores de params y assets se reemplazan completos: ZODB no ve
         # los cambios hechos por dentro de un valor.
