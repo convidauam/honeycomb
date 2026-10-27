@@ -4,7 +4,7 @@ Los juegos son nodos: descienden de InteractiveCell, que ya vive en beehive.py.
 GameCell es la base compartida por los juegos de Pixi.js y de Unity, y hay una
 subclase por tecnologia para que cada una pueda registrar su propia vista y
 entregar sus assets en el formato que necesita. El quiz y el combinabejas son
-instancias de PixiGame.
+instancias de PixiGame y se distinguen por su `kind`.
 
 Catalogo y asignacion son cosas distintas. El catalogo (el nodo, sus Challenge y
 sus Badge) se define una vez y es igual para todos. La asignacion (Reward) se crea
@@ -223,9 +223,11 @@ class GameCell(InteractiveCell):
     """Base compartida por los juegos de Pixi.js y de Unity.
 
     Le da a cada juego sus parametros generales y pone a su disposicion los
-    assets en el formato que pide su tecnologia. No se instancia directamente:
-    cada tecnologia tiene su subclase, para que Pyramid despache una vista
-    distinta por cada una.
+    assets en el formato que pide su tecnologia. La clase dice con que
+    tecnologia esta hecho y `kind` cual interactivo es, por ejemplo "quiz" o
+    "combiner". El frontend usa `kind` para cargar el componente que
+    corresponde. No se instancia directamente: cada tecnologia tiene su
+    subclase, para que Pyramid despache una vista distinta por cada una.
     """
 
     def __init__(self, name, kind, title="", description="", params=None,
