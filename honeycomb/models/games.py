@@ -264,6 +264,7 @@ class GameCell(InteractiveCell):
             "title": self.title,
             "description": self.description,
             "type": self.__class__.__name__,
+            "kind": self.kind,
             "params": dict(self.params),
             "assets": dict(self.assets),
         }
