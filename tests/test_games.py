@@ -297,3 +297,36 @@ def test_the_combinabejas_is_a_pixi_game_with_a_spritesheet():
     assert data["kind"] == "combiner"
     assert data["params"] == {"orientation": "vertical"}
     assert data["assets"]["partes"]["meta"]["image"] == "combinabejas.png"
+
+
+# ---------- kind: cual interactivo es ----------
+
+def test_a_game_knows_which_interactive_it_is():
+    quiz = PixiGame(name="quiz-abejas", title="Quiz", kind="quiz")
+    assert quiz.kind == "quiz"
+    assert quiz.to_dict()["kind"] == "quiz"
+
+
+def test_instances_of_one_class_are_told_apart_by_kind():
+    """Son la misma clase, el frontend los distingue por kind para cargar su componente."""
+    quiz = PixiGame(name="q", title="Q", kind="quiz")
+    combiner = PixiGame(name="c", title="C", kind="combiner")
+    assert type(quiz) is type(combiner)
+    assert quiz.to_dict()["type"] == combiner.to_dict()["type"] == "PixiGame"
+    assert quiz.to_dict()["kind"] != combiner.to_dict()["kind"]
+
+
+def test_unity_games_have_a_kind_too():
+    game = UnityGame(name="a", title="A", kind="abejopolis")
+    assert game.to_dict()["kind"] == "abejopolis"
+
+
+def test_kind_is_required():
+    with pytest.raises(TypeError):
+        PixiGame(name="q", title="Q")
+
+
+def test_kind_must_be_a_non_empty_string():
+    for bad in ("", "   ", None, 3, ["quiz"]):
+        with pytest.raises(ValueError):
+            PixiGame(name="q", title="Q", kind=bad)
