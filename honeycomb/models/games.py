@@ -230,6 +230,8 @@ class GameCell(InteractiveCell):
 
     def __init__(self, name, kind, title="", description="", params=None,
                  assets=None):
+        if not isinstance(kind, str) or not kind.strip():
+            raise ValueError(f"kind invalido: {kind!r}")
         super().__init__(name=name, title=title)
         self.kind = kind
         self.description = description
