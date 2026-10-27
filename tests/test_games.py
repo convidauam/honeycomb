@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from honeycomb.models.axes import JellyPack
@@ -177,3 +179,24 @@ def test_default_cardinality():
 def test_bad_catalog_fails_when_loaded():
     with pytest.raises(ValueError):
         _challenge("choice", "a", cardinality="multiple")
+
+
+# ---------- Challenge: lo que sale hacia el cliente ----------
+
+def test_challenge_to_dict_does_not_expose_the_answer():
+    """La razon de ser del antitrampas: el cliente nunca debe recibir la respuesta."""
+    assert "correct_response" not in json.dumps(_choice().to_dict())
+
+
+def test_challenge_to_dict_exposes_what_the_player_needs():
+    data = _choice().to_dict()
+    assert data["interaction"] == "choice"
+    assert data["cardinality"] == "single"
+    assert data["prompt"] == "Que es el pecoreo?"
+    assert len(data["choices"]) == 4
+    assert data["badges"][0]["name"] == "first-avatar"
+
+
+def test_challenge_can_carry_its_own_assets():
+    challenge = Challenge(name="r", title="R", badges=[], assets={"imagen": "flor.png"})
+    assert challenge.to_dict()["assets"] == {"imagen": "flor.png"}
