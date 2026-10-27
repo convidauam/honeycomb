@@ -1,3 +1,5 @@
+import pytest
+
 from honeycomb.models.axes import JellyPack
 from honeycomb.models.games import Badge, Challenge, Reward
 from honeycomb.models.users import DroneUser
@@ -123,3 +125,55 @@ def test_gap_match_is_checked_like_match():
     challenge = _challenge("gapMatch", [["nectar", "hueco1"]])
     assert challenge.check_proof([["nectar", "hueco1"]])
     assert challenge.check_proof([["hueco1", "nectar"]]) == []
+
+
+# ---------- Challenge: pruebas tramposas o mal formadas ----------
+
+def test_a_string_is_not_a_list():
+    """Sin esta regla, "ac" pasaria por ["a", "c"] al iterarse letra por letra."""
+    assert _challenge("choice", ["a", "c"], cardinality="multiple").check_proof("ac") == []
+
+
+def test_true_is_not_option_one():
+    assert _challenge("choice", 1).check_proof(True) == []
+
+
+def test_malformed_proofs_fail_instead_of_crashing():
+    challenge = _challenge("match", [["a", "b"]])
+    for proof in (None, {}, "ab", 3.5, [["a"]], [["a", "b", "c"]], [[{}, "b"]]):
+        assert challenge.check_proof(proof) == []
+
+
+def test_reported_challenge_never_passes_check_proof():
+    challenge = _reported()
+    assert challenge.is_verifiable() is False
+    for proof in (None, 0, "cualquier", ["a"]):
+        assert challenge.check_proof(proof) == []
+
+
+def test_is_verifiable_needs_interaction_and_response():
+    assert _choice().is_verifiable() is True
+    assert Challenge(name="a", title="A", badges=[], interaction="choice").is_verifiable() is False
+
+
+# ---------- Challenge: catalogo mal cargado ----------
+
+def test_unknown_interaction_is_rejected():
+    with pytest.raises(ValueError):
+        _challenge("hotspot", "x")
+
+
+def test_cardinality_must_be_allowed_by_qti():
+    with pytest.raises(ValueError):
+        _challenge("order", "a", cardinality="single")
+
+
+def test_default_cardinality():
+    assert _challenge("choice", "a").cardinality == "single"
+    assert _challenge("order", ["a", "b"]).cardinality == "ordered"
+    assert _challenge("match", [["a", "b"]]).cardinality == "multiple"
+
+
+def test_bad_catalog_fails_when_loaded():
+    with pytest.raises(ValueError):
+        _challenge("choice", "a", cardinality="multiple")
