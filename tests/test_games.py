@@ -3,7 +3,15 @@ import json
 import pytest
 
 from honeycomb.models.axes import JellyPack
-from honeycomb.models.games import Badge, Challenge, Reward
+from honeycomb.models.beehive import CellLeaf, InteractiveCell
+from honeycomb.models.games import (
+    Badge,
+    Challenge,
+    GameCell,
+    PixiGame,
+    Reward,
+    UnityGame,
+)
 from honeycomb.models.users import DroneUser
 
 
@@ -200,3 +208,92 @@ def test_challenge_to_dict_exposes_what_the_player_needs():
 def test_challenge_can_carry_its_own_assets():
     challenge = Challenge(name="r", title="R", badges=[], assets={"imagen": "flor.png"})
     assert challenge.to_dict()["assets"] == {"imagen": "flor.png"}
+
+
+# ---------- Los nodos de juego ----------
+
+def test_a_game_is_a_node():
+    """Lo que pidio el profesor: los juegos descienden de InteractiveCell."""
+    game = PixiGame(name="quiz-abejas", title="Quiz de abejas", kind="quiz")
+    assert isinstance(game, InteractiveCell)
+    assert isinstance(game, CellLeaf)
+
+
+def test_the_node_inherits_id_and_name_from_cellleaf():
+    game = PixiGame(name="quiz-abejas", title="Quiz de abejas", kind="quiz")
+    assert game.id is not None
+    assert game.__name__ == "quiz-abejas"
+    assert game.title == "Quiz de abejas"
+    assert game.icon is None
+    assert game.is_featured is False
+
+
+def test_one_subclass_per_technology():
+    pixi = PixiGame(name="p", title="P", kind="quiz")
+    unity = UnityGame(name="u", title="U", kind="abejopolis")
+    assert isinstance(pixi, GameCell)
+    assert isinstance(unity, GameCell)
+    assert not isinstance(pixi, UnityGame)
+    assert not isinstance(unity, PixiGame)
+
+
+def test_params_and_assets_live_in_the_base():
+    game = UnityGame(name="abejopolis", title="Abejopolis", kind="abejopolis",
+                     params={"productName": "Abejopolis"},
+                     assets={"dataUrl": "Build/Abejopolis.data.gz"})
+    assert game.params["productName"] == "Abejopolis"
+    assert game.assets["dataUrl"] == "Build/Abejopolis.data.gz"
+
+
+def test_a_game_starts_with_no_challenges():
+    assert PixiGame(name="q", title="Q", kind="quiz").challenges == []
+
+
+def test_add_challenge_is_idempotent():
+    game = PixiGame(name="q", title="Q", kind="quiz")
+    challenge = _choice()
+    assert game.add_challenge(challenge) is game.add_challenge(challenge)
+    assert len(game.challenges) == 1
+
+
+def test_get_challenge():
+    game = PixiGame(name="q", title="Q", kind="quiz")
+    challenge = game.add_challenge(_choice())
+    assert game.get_challenge(challenge.id) is challenge
+    assert game.get_challenge("no-existe") is None
+
+
+def test_game_to_dict_does_not_leak_its_challenges_answers():
+    """El riesgo real: serializar el nodo completo y arrastrar la respuesta."""
+    game = PixiGame(name="q", title="Q", kind="quiz")
+    game.add_challenge(_choice())
+    assert "correct_response" not in json.dumps(game.to_dict())
+
+
+def test_game_to_dict_reports_its_type():
+    assert PixiGame(name="q", title="Q", kind="quiz").to_dict()["type"] == "PixiGame"
+    assert UnityGame(name="u", title="U", kind="abejopolis").to_dict()["type"] == "UnityGame"
+
+
+def test_game_to_dict_can_omit_the_challenges():
+    game = PixiGame(name="q", title="Q", kind="quiz")
+    game.add_challenge(_choice())
+    assert "challenges" not in game.to_dict(include_challenges=False)
+
+
+def test_the_combinabejas_is_a_pixi_game_with_a_spritesheet():
+    sheet = {
+        "frames": {"ala-1.png": {"frame": {"x": 0, "y": 0, "w": 64, "h": 64},
+                                 "spriteSourceSize": {"x": 0, "y": 0, "w": 64, "h": 64},
+                                 "sourceSize": {"w": 64, "h": 64}}},
+        "meta": {"image": "combinabejas.png", "format": "RGBA8888",
+                 "size": {"w": 64, "h": 64}, "scale": "1"},
+    }
+    combinabejas = PixiGame(name="combinabejas", title="Combina Abejas",
+                            kind="combiner",
+                            params={"orientation": "vertical"},
+                            assets={"partes": sheet})
+    data = combinabejas.to_dict()
+    assert data["kind"] == "combiner"
+    assert data["params"] == {"orientation": "vertical"}
+    assert data["assets"]["partes"]["meta"]["image"] == "combinabejas.png"
