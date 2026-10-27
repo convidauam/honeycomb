@@ -330,3 +330,46 @@ def test_kind_must_be_a_non_empty_string():
     for bad in ("", "   ", None, 3, ["quiz"]):
         with pytest.raises(ValueError):
             PixiGame(name="q", title="Q", kind=bad)
+
+
+# ---------- Reward ----------
+
+def test_reward_records_who_what_and_when():
+    badge = _badge()
+    reward = Reward(userid="local:abc", badge=badge, challenge=_reported())
+    assert reward.userid == "local:abc"
+    assert reward.badge is badge
+    assert reward.awarded_at
+
+
+def test_reward_can_grant_points_on_the_axes():
+    reward = _badge().grant(_user(), grants=JellyPack(problem_solving=3))
+    assert reward.grants.problem_solving == 3
+    assert reward.grants.integration == 0
+
+
+def test_reward_to_dict():
+    challenge = _reported()
+    data = _badge().grant(_user(), challenge=challenge).to_dict()
+    assert set(data) == {"userid", "badge", "challenge_id", "source", "grants", "awarded_at"}
+    assert data["challenge_id"] == challenge.id
+    assert data["grants"] == {"problem_solving": 0, "integration": 0, "abstract_thinking": 0}
+
+
+def test_reward_without_challenge():
+    """Una insignia otorgada fuera de un reto, por ejemplo a mano por staff."""
+    assert _badge().grant(_user()).to_dict()["challenge_id"] is None
+
+
+def test_reward_to_dict_does_not_leak_the_answer_either():
+    data = _badge().grant(_user(), challenge=_choice()).to_dict()
+    assert "correct_response" not in json.dumps(data)
+
+
+def test_one_badge_many_rewards():
+    """Una sola insignia en el catalogo, una recompensa por cada quien la gana."""
+    badge = _badge()
+    players = ["local:a", "local:b", "local:c"]
+    rewards = [badge.grant(_user(p)) for p in players]
+    assert {r.userid for r in rewards} == set(players)
+    assert all(r.badge is badge for r in rewards)
