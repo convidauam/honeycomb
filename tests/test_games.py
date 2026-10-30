@@ -5,6 +5,7 @@ import pytest
 from honeycomb.models.axes import JellyPack
 from honeycomb.models.beehive import CellLeaf, InteractiveCell
 from honeycomb.models.games import (
+    GAME_TYPES,
     Badge,
     Challenge,
     GameCell,
@@ -109,6 +110,19 @@ def test_choice_multiple_ignores_order_but_not_content():
     assert challenge.check_proof(["c", "a"])
     assert challenge.check_proof(["a"]) == []
     assert challenge.check_proof(["a", "b", "c"]) == []
+
+
+def test_is_correct_does_not_depend_on_having_badges():
+    """Correcto sin insignias sigue siendo correcto, aunque check_proof devuelva []."""
+    challenge = _choice(badges=[])
+    assert challenge.is_correct("nectar")
+    assert challenge.check_proof("nectar") == []
+
+
+def test_is_correct_rejects_wrong_malformed_and_unverifiable_proofs():
+    assert not _choice().is_correct("casa")
+    assert not _choice().is_correct({"id": "nectar"})
+    assert not _reported().is_correct("cualquier cosa")
 
 
 # ---------- Challenge: las demas interacciones simples ----------
@@ -237,6 +251,12 @@ def test_one_subclass_per_technology():
     assert not isinstance(unity, PixiGame)
 
 
+def test_game_types_are_found_by_the_name_that_to_dict_reports():
+    assert GAME_TYPES == {"PixiGame": PixiGame, "UnityGame": UnityGame}
+    for name, game_class in GAME_TYPES.items():
+        assert game_class(name="g", title="G", kind="k").to_dict()["type"] == name
+
+
 def test_params_and_assets_live_in_the_base():
     game = UnityGame(name="abejopolis", title="Abejopolis", kind="abejopolis",
                      params={"productName": "Abejopolis"},
@@ -330,6 +350,50 @@ def test_kind_must_be_a_non_empty_string():
     for bad in ("", "   ", None, 3, ["quiz"]):
         with pytest.raises(ValueError):
             PixiGame(name="q", title="Q", kind=bad)
+
+
+# ---------- Cambiar un juego ya creado ----------
+
+def test_update_changes_only_what_is_passed():
+    game = PixiGame(name="q", title="Q", kind="quiz", description="vieja",
+                    params={"a": 1})
+    game.update(title="Nuevo")
+    assert game.title == "Nuevo"
+    assert game.description == "vieja"
+    assert game.kind == "quiz"
+    assert dict(game.params) == {"a": 1}
+
+
+def test_update_can_change_the_kind():
+    game = PixiGame(name="q", title="Q", kind="quiz")
+    game.update(kind="combiner")
+    assert game.to_dict()["kind"] == "combiner"
+
+
+def test_update_replaces_params_and_assets_whole():
+    game = PixiGame(name="q", title="Q", kind="quiz", params={"a": 1, "b": 2},
+                    assets={"x": "1"})
+    game.update(params={"c": 3}, assets={})
+    assert dict(game.params) == {"c": 3}
+    assert dict(game.assets) == {}
+
+
+def test_update_keeps_the_challenges():
+    game = PixiGame(name="q", title="Q", kind="quiz")
+    challenge = game.add_challenge(_choice())
+    game.update(title="Nuevo", params={"a": 1})
+    assert game.get_challenge(challenge.id) is challenge
+
+
+def test_update_changes_nothing_if_something_is_invalid():
+    game = PixiGame(name="q", title="Q", kind="quiz", params={"a": 1})
+    with pytest.raises(ValueError):
+        game.update(title="Nuevo", kind="   ")
+    with pytest.raises((TypeError, ValueError)):
+        game.update(title="Nuevo", params="no es un mapeo")
+    assert game.title == "Q"
+    assert game.kind == "quiz"
+    assert dict(game.params) == {"a": 1}
 
 
 # ---------- Reward ----------
