@@ -22,7 +22,7 @@ class HoneycombResource:
             honeycombs.append({
                 'id': hc.__name__,
                 'title': hc.title,
-                'icon': hc.icon,
+                'icon': self.request.resource_url(hc) + "@@icon",
             })
         return {'honeycombs': honeycombs}
 
@@ -40,7 +40,7 @@ class HoneycombResource:
                 "label": hc.title,
                 "themeColor": "root",
                 "url": self.request.resource_url(hc),
-                "icon": hc.icon,
+                "icon": self.request.resource_url(hc) + "@@icon",
             },
             "position": {"x": 0, "y": 0},  # en el centro
             "type": "custom",
@@ -64,7 +64,7 @@ class HoneycombResource:
                     "label": cell.title,
                     "themeColor": "default",
                     "url": self.request.resource_url(cell),
-                    "icon": getattr(cell, 'icon', None),
+                    "icon": getattr(cell, 'icon', None) and self.request.resource_url(cell) + "@@icon",
                 },
                 "position": {"x": x, "y": y},
                 "type": "custom",
@@ -83,11 +83,26 @@ class HoneycombResource:
             for child in child_nodes
         ]
 
+        # Featured: nodos resaltados en la vista de catálogo
+        featured = []
+
+        for cell in hc.__featured__.values():
+            featured.append({
+                "id": cell.id.hex,
+                "data": {
+                    "label": cell.title,
+                    "themeColor": "default",
+                    "url": self.request.resource_url(cell),
+                    "icon": self.request.resource_url(cell) + "@@icon",
+                },
+            })
+
         return {
             "id": hc_node["id"],
             "title": hc.title,
             "nodes": [hc_node] + child_nodes,
             "edges": edges,
+            "featured": featured,
         }
 
 @resource(path='/api/v1/node/{node_id}', cors_origins=('*',), factory='honeycomb.root_factory')
@@ -116,24 +131,61 @@ class NodeResource:
             "label": getattr(node, "title", ""),
             "contents": getattr(node, "contents", ""),
             "url": self.request.resource_url(node),
-            "iconUrl": getattr(node, "icon", None),
+            "iconUrl": self.request.resource_url(node) + "@@icon",
             "nodes": [],
             "edges": [],
+            "featured": [],
+            "type": None,
+            "href": None,
+            "src": None,
         }
 
+        if isinstance(node, CellNode):
+            data["type"] = "node"
+        elif isinstance(node, CellLeaf):
+            data["type"] = "leaf"
+            if isinstance(node, CellWebContent):
+                data["type"] = "pagina_web"
+                data["href"] = node.href
+        else:
+            data["type"] = "custom"
 
         if hasattr(node, "nodes") and hasattr(node, "edges"):
-            data["nodes"] = [{'id': str(child.id), 'label': getattr(child, 'title', ''), 'url': self.request.resource_url(child)} for child in node.nodes]
+            for child in node.nodes:
+                if hasattr(child, "__axes__"):
+                    position = dict(zip(('x', 'y', 'z'), child.__axes__))
+                else:
+                    position = dict(zip(('x', 'y'), (0,0)))
+
+                data["nodes"].append({
+                    'id': str(child.id),
+                    'data': {'label': getattr(child, 'title', '')},
+                    'label': getattr(child, 'title', ''),
+                    'url': self.request.resource_url(child),
+                    'iconUrl': self.request.resource_url(child) + "@@icon",
+                    'position': position,
+                })
+            # data["nodes"] = [{'id': str(child.id), 'label': getattr(child, 'title', ''), 'url': self.request.resource_url(child)} for child in node.nodes]
             data["edges"] = [{'source': str(edge.from_node.id), 'target': str(edge.to_node.id), 'id': getattr(edge, 'id', uuid.uuid4().hex), 'label': edge.title, 'type': "custom-label", 'data': {'hasArrow': False}} for edge in node.edges]
 
         elif hasattr(node, "values"):
             for child in node.values():
+                if hasattr(child, "__axes__"):
+                    position = dict(zip(('x', 'y', 'z'), child.__axes__))
+                else:
+                    position = dict(zip(('x', 'y'), (0,0)))
+
                 data["nodes"].append({
                     "id": str(child.id),
+                    "data": {"label": getattr(child, "title", "")},
                     "label": getattr(child, "title", ""),
                     "url": self.request.resource_url(child),
-                    "iconUrl": getattr(child, "icon", None),
+                    "iconUrl": self.request.resource_url(child) + "@@icon",
+                    "position": position,
                 })
+
+                if child.is_featured:
+                    data["featured"].append(child.id.hex)
 
             edges = root.__edges__.get(node_id, [])
             data["edges"] = [edge for edge in edges]
