@@ -14,7 +14,8 @@ Los retos siguen las interacciones simples de QTI 3.0, seccion 2.4.1:
 https://www.imsglobal.org/sites/default/files/spec/qti/v3/info/imsqti_asi_v3p0p1_infomodel_v1p0.html#Main2p4
 
 La respuesta correcta de un Challenge nunca sale hacia el cliente: to_dict() no la
-incluye y la unica forma de usarla es check_proof(), que corre en el servidor.
+incluye y solo se usa dentro de is_correct() y check_proof(), que corren en el
+servidor.
 """
 
 from persistent import Persistent
@@ -72,6 +73,12 @@ def _response(response, base_type, cardinality):
         raise ValueError(f"se esperaba una lista: {response!r}")
     values = [_value(v, base_type) for v in response]
     return values if cardinality == "ordered" else frozenset(values)
+
+
+def _kind(value):
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"kind invalido: {value!r}")
+    return value
 
 
 class Badge(Persistent):
@@ -158,19 +165,26 @@ class Challenge(Persistent):
         base_type = INTERACTIONS[self.interaction][0]
         return _response(response, base_type, self.cardinality)
 
+    def is_correct(self, proof):
+        """Si la prueba coincide con la respuesta correcta.
+
+        Solo corre en el servidor. Una prueba mal formada cuenta como
+        incorrecta, no truena.
+        """
+        if not self.is_verifiable():
+            return False
+        try:
+            return self._comparable(proof) == self._comparable(self.correct_response)
+        except ValueError:
+            return False
+
     def check_proof(self, proof):
         """Devuelve las insignias ganadas con esta prueba, o una lista vacia.
 
-        Es la unica forma de usar la respuesta correcta y solo corre en el
-        servidor. Una prueba mal formada cuenta como incorrecta, no truena.
+        Un reto correcto que no tiene insignias tambien devuelve una lista
+        vacia, para saber si se supero hay que usar is_correct().
         """
-        if not self.is_verifiable():
-            return []
-        try:
-            passed = self._comparable(proof) == self._comparable(self.correct_response)
-        except ValueError:
-            return []
-        return list(self.badges) if passed else []
+        return list(self.badges) if self.is_correct(proof) else []
 
     def to_dict(self):
         """Vista publica. No incluye `correct_response` ni debe incluirla nunca."""
@@ -232,8 +246,7 @@ class GameCell(InteractiveCell):
 
     def __init__(self, name, kind, title="", description="", params=None,
                  assets=None):
-        if not isinstance(kind, str) or not kind.strip():
-            raise ValueError(f"kind invalido: {kind!r}")
+        kind = _kind(kind)
         super().__init__(name=name, title=title)
         self.kind = kind
         self.description = description
@@ -256,6 +269,24 @@ class GameCell(InteractiveCell):
             if challenge.id == challenge_id:
                 return challenge
         return None
+
+    def update(self, title=None, description=None, kind=None, params=None,
+               assets=None):
+        """Cambia solo lo que se pasa, y no toca nada si algo no es valido.
+
+        params y assets se reemplazan completos, igual que al crear el juego.
+        """
+        if kind is not None:
+            kind = _kind(kind)
+        if params is not None:
+            params = PersistentMapping(params)
+        if assets is not None:
+            assets = PersistentMapping(assets)
+        changes = {"title": title, "description": description, "kind": kind,
+                   "params": params, "assets": assets}
+        for attribute, value in changes.items():
+            if value is not None:
+                setattr(self, attribute, value)
 
     def to_dict(self, include_challenges=True):
         """Las celdas hermanas se serializan en sus vistas. Aqui si hay to_dict
@@ -290,3 +321,7 @@ class UnityGame(GameCell):
     El formato de sus assets esta por definirse. Lo que hoy recibe el cargador
     de Unity es dataUrl, frameworkUrl, codeUrl y streamingAssetsUrl.
     """
+
+
+# Las tecnologias por el nombre de su clase, el mismo que sale en to_dict()["type"].
+GAME_TYPES = {cls.__name__: cls for cls in (PixiGame, UnityGame)}
