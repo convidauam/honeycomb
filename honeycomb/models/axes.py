@@ -60,6 +60,7 @@ class HoneycombExplorer(Persistent):
                     coords.append(node.__axes__)
         self.matrix = spatial.distance_matrix(np.array(coords), np.array(coords))
         self.names = names
+
     def reduction_2d(self, components=2):
         "This use the MDS dimentional reduction trough sklearn function defined"
         if self.matrix is None:
