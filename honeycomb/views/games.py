@@ -6,7 +6,17 @@ admin_delete_node, que es generico sobre CellLeaf. Los cuerpos van en JSON y las
 llaves en ingles, las mismas que devuelve to_dict().
 
 Leer un juego y mandar la prueba de un reto es publico. Crear o cambiar el catalogo
-pide sesion. Toda peticion que modifica datos pide el token CSRF.
+pide sesion. Todo POST, PUT o DELETE pide el token CSRF, incluida la prueba.
+
+Un juego se conecta asi:
+
+1. GET a la url del juego. Devuelve kind, params, assets, los retos sin sus
+   respuestas y proof_url.
+2. GET a /login una sola vez. Deja la cookie de sesion y la cookie csrf_token, cuyo
+   valor va en el header X-CSRF-Token.
+3. POST a proof_url con {"challenge_id": ..., "proof": ...}. Responde con
+   {"challenge_id", "correct", "badges"} y no guarda nada. La forma de proof depende
+   de la interaccion del reto: un id, una lista de ids o una lista de pares [a, b].
 """
 
 from persistent.mapping import PersistentMapping
