@@ -52,7 +52,7 @@ class SecurityPolicy:
             return Denied("You need to sign in to view this contents")
         elif permission == 'read':
             if CellBuilder.has_access(context, identity):
-                return Allowed('Access granted for user %s', identity['username'])
+                return Allowed('Access granted for user %s', identity.username)
             else:
                 return Denied("You are not allowed to access this resource")
         else:
