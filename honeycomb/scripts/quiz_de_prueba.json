@@ -1,0 +1,35 @@
+{
+  "questions":
+  [
+    {
+      "id": 1,
+      "question": "¿Qué técnicas utilizan las plantas para atraer a las abejas?",
+      "options": ["La altura a la que está la flor de la planta", "El olor que desprende la flor", "Formas, colores, aromas y recompensas", "La forma de la flor"],
+      "answer": 2
+    },
+    {
+      "id": 2,
+      "question": "Las plantas recompensan a sus polinizadores con...",
+      "options": ["Agua", "Azúcar refinado", "Néctar y polen", "Miel"],
+      "answer": 2
+    },
+    {
+      "id": 3,
+      "question": "¿Qué es el pecoreo?",
+      "options": ["Localizar una nueva casa para la enjambrazon", "Sacar de la colmena toda la suciedad", "Ir en busca de néctar a las flores", "Trabajo que realiza el apicultor al retirar la miel"],
+      "answer": 2
+    },
+    {
+      "id": 4,
+      "question": "¿Cuál es el principal trabajo de las abejas en la colmena?",
+      "options": ["Construir la colmena", "Producir miel", "Cuidar a las larvas", "Recolectar néctar y polen"],
+      "answer": 3
+    },
+    {
+      "id": 5,
+      "question": "¿Cuál es la principal amenaza para la supervivencia de las abejas?",
+      "options": ["El cambio climático", "La pérdida de hábitat y la falta de alimentos", "Las enfermedades", "La contaminación"],
+      "answer": 1
+    }
+  ]
+}
